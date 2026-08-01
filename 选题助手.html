@@ -273,8 +273,7 @@
 
 <script>
   // ========== 配置 ==========
-  const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
-  const DIFY_API_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
+  const PROXY_URL = '/api/chat';  // Vercel 服务端代理，自动解决跨域
 
   // ========== 解析选题 ==========
   function parseTopics(text) {
@@ -393,23 +392,15 @@
       return;
     }
 
-    if (DIFY_API_KEY === 'YOUR_DIFY_API_KEY_HERE') {
-      container.innerHTML = `<div class="error">⚠️ 请先设置 API Key：打开此文件，找到 <code>DIFY_API_KEY</code>，替换成你的 Dify API Key</div>`;
-      return;
-    }
-
     sendBtn.disabled = true;
     sendBtn.textContent = '生成中...';
     container.innerHTML = '';
     loading.innerHTML = `<div class="loading"><div class="spinner"></div>AI 正在搜索和生成选题...</div>`;
 
     try {
-      const response = await fetch(DIFY_API_URL, {
+      const response = await fetch(PROXY_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DIFY_API_KEY}`,
-        },
+        headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           inputs: {},
           query: query,
