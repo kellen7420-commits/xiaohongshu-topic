@@ -1,0 +1,460 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>小红书选题助手</title>
+  <style>
+    * { margin: 0; padding: 0; box-sizing: border-box; }
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      background: #fef7f0;
+      min-height: 100vh;
+    }
+    .header {
+      background: linear-gradient(135deg, #ff6b35, #ff4444);
+      color: white;
+      padding: 24px 32px;
+      text-align: center;
+      box-shadow: 0 2px 12px rgba(255,107,53,0.3);
+    }
+    .header h1 { font-size: 24px; margin-bottom: 4px; }
+    .header p { font-size: 13px; opacity: 0.85; }
+    .container { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+    .input-area {
+      background: white;
+      border-radius: 16px;
+      padding: 20px;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      margin-bottom: 24px;
+      display: flex;
+      gap: 12px;
+    }
+    .input-area input {
+      flex: 1;
+      border: 2px solid #eee;
+      border-radius: 12px;
+      padding: 14px 18px;
+      font-size: 15px;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .input-area input:focus { border-color: #ff6b35; }
+    .input-area button {
+      background: linear-gradient(135deg, #ff6b35, #ff4444);
+      color: white;
+      border: none;
+      border-radius: 12px;
+      padding: 14px 28px;
+      font-size: 15px;
+      font-weight: 600;
+      cursor: pointer;
+      white-space: nowrap;
+      transition: opacity 0.2s;
+    }
+    .input-area button:hover { opacity: 0.9; }
+    .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+    .quick-btns {
+      display: flex;
+      gap: 8px;
+      flex-wrap: wrap;
+      margin-bottom: 24px;
+    }
+    .quick-btns button {
+      background: white;
+      border: 1.5px solid #ffe0d3;
+      border-radius: 20px;
+      padding: 8px 16px;
+      font-size: 13px;
+      color: #ff6b35;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+    .quick-btns button:hover {
+      background: #fff0ea;
+      border-color: #ff6b35;
+    }
+    .cards-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: 20px;
+    }
+    @media (min-width: 900px) {
+      .cards-grid { grid-template-columns: repeat(2, 1fr); }
+      .card:nth-child(5) { grid-column: 1 / -1; }
+    }
+    .card {
+      background: white;
+      border-radius: 16px;
+      overflow: hidden;
+      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
+      transition: transform 0.2s, box-shadow 0.2s;
+      border: 1px solid #f0f0f0;
+    }
+    .card:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
+    }
+    .card-header {
+      background: linear-gradient(135deg, #fff5f0, #ffede6);
+      padding: 20px;
+      border-bottom: 1px solid #ffe0d3;
+    }
+    .card-num {
+      font-size: 12px;
+      color: #ff6b35;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 6px;
+    }
+    .card-title {
+      font-size: 18px;
+      font-weight: 700;
+      color: #1a1a1a;
+      line-height: 1.4;
+    }
+    .card-meta {
+      display: flex;
+      gap: 12px;
+      margin-top: 8px;
+      font-size: 12px;
+      color: #999;
+    }
+    .card-meta span {
+      background: #f8f8f8;
+      padding: 3px 10px;
+      border-radius: 10px;
+    }
+    .card-body { padding: 20px; }
+    .card-body h3 {
+      font-size: 13px;
+      color: #ff6b35;
+      margin: 14px 0 6px;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .card-body .titles {
+      list-style: none;
+      margin: 8px 0;
+    }
+    .card-body .titles li {
+      padding: 6px 0;
+      font-size: 14px;
+      color: #333;
+      border-bottom: 1px solid #f5f5f5;
+    }
+    .card-body .titles li::before { content: "① ② ③ ④ ⑤".split(" ")[0]; margin-right: 6px; color: #ff6b35; font-size: 12px; }
+    .card-body .content {
+      font-size: 14px;
+      color: #555;
+      line-height: 1.8;
+    }
+    .card-body .tags {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+      margin-top: 8px;
+    }
+    .card-body .tags span {
+      background: #f0f7ff;
+      color: #3b82f6;
+      padding: 4px 10px;
+      border-radius: 12px;
+      font-size: 12px;
+    }
+    .card-body .cover-box {
+      background: #fafafa;
+      border: 1px dashed #ddd;
+      border-radius: 10px;
+      padding: 14px;
+      margin-top: 8px;
+      font-size: 13px;
+      color: #777;
+      line-height: 1.7;
+    }
+    .loading {
+      text-align: center;
+      padding: 60px 20px;
+      color: #999;
+    }
+    .loading .spinner {
+      width: 40px;
+      height: 40px;
+      border: 4px solid #eee;
+      border-top-color: #ff6b35;
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+      margin: 0 auto 16px;
+    }
+    @keyframes spin { to { transform: rotate(360deg); } }
+    .error {
+      background: #fff0f0;
+      color: #cc3333;
+      padding: 16px 20px;
+      border-radius: 12px;
+      margin-bottom: 20px;
+      border: 1px solid #ffcccc;
+    }
+    .empty {
+      text-align: center;
+      padding: 80px 20px;
+      color: #bbb;
+    }
+    .empty .icon { font-size: 56px; margin-bottom: 12px; }
+    .footer {
+      text-align: center;
+      padding: 40px;
+      color: #ccc;
+      font-size: 12px;
+    }
+    .copy-btn {
+      position: absolute;
+      top: 8px;
+      right: 8px;
+      background: rgba(255,255,255,0.8);
+      border: 1px solid #ddd;
+      border-radius: 6px;
+      padding: 4px 10px;
+      font-size: 11px;
+      cursor: pointer;
+      opacity: 0;
+      transition: opacity 0.2s;
+    }
+    .card-body { position: relative; }
+    .card-body:hover .copy-btn { opacity: 1; }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 8px;
+    }
+    .header-actions button {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+    }
+  </style>
+</head>
+<body>
+
+<div class="header">
+  <h1>🐾 小红书选题助手</h1>
+  <p>宠物赛道 · 大牌正品经销商 · 每日选题面板</p>
+  <div class="header-actions">
+    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 今日热门选题</button>
+    <button onclick="document.querySelector('.input-area input').focus()">💬 输入自定义选题</button>
+  </div>
+</div>
+
+<div class="container">
+  <div class="input-area">
+    <input type="text" id="topicInput" placeholder="输入选题需求，如：最近猫咪夏天喝水少怎么选题？" />
+    <button id="sendBtn" onclick="fetchTopics()">生成选题</button>
+  </div>
+
+  <div class="quick-btns">
+    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 今日热门</button>
+    <button onclick="fetchTopics('夏天猫咪相关的热门话题，推荐5个选题')">☀️ 夏季猫咪</button>
+    <button onclick="fetchTopics('夏天狗狗相关的热门话题，推荐5个选题')">🐶 夏季狗狗</button>
+    <button onclick="fetchTopics('宠物粮省钱平价相关的热门话题，推荐5个选题')">💰 省钱平替</button>
+    <button onclick="fetchTopics('大牌猫粮狗粮的好价渠道相关选题，推荐5个')">🏷️ 大牌好价</button>
+  </div>
+
+  <div id="cardsContainer"></div>
+  <div id="loadingContainer"></div>
+</div>
+
+<div class="footer">小红书选题助手 · 大牌正品，渠道好价 · Powered by Dify + DeepSeek</div>
+
+<script>
+  // ========== 配置 ==========
+  const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
+  const DIFY_API_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
+
+  // ========== 解析选题 ==========
+  function parseTopics(text) {
+    const cards = [];
+    // 按选题序号分割
+    const sections = text.split(/选题\s*\d+[：:]/g);
+    const titles = text.match(/选题\s*\d+[：:].*?(?=选题\s*\d|$)/gs);
+
+    if (titles && titles.length > 0) {
+      titles.forEach((section, i) => {
+        cards.push({ index: i + 1, raw: section.trim() });
+      });
+    } else if (sections.length > 1) {
+      sections.slice(1).forEach((section, i) => {
+        cards.push({ index: i + 1, raw: section.trim() });
+      });
+    } else {
+      // Fallback：返回原文
+      cards.push({ index: 1, raw: text });
+    }
+    return cards;
+  }
+
+  function extractField(text, fieldName) {
+    const patterns = {
+      title: /(?:标题备选|标题)[：:]\s*\n?(.+?)(?=\n\n|\n(?:正文|配图|话题|类型|角度|#)|$)/s,
+      content: /(?:正文框架|正文)[：:]\s*\n?(.+?)(?=\n\n|\n(?:配图|话题|类型|封面|#)|$)/s,
+      cover: /(?:配图建议|封面建议|封面怎么做)[：:]\s*\n?(.+?)(?=\n\n|\n(?:话题|类型|#)|$)/s,
+      tags: /(?:话题标签|标签)[：:]\s*\n?(.+?)(?=\n\n|\n(?:类型|封面)|$)/s,
+      type: /(?:类型)[：:]\s*(.+?)(?=\n|$)/,
+      heat: /(?:热度|话题热度)[：:]\s*(.+?)(?=\n|$)/,
+    };
+    const match = text.match(patterns[fieldName]);
+    return match ? match[1].trim() : '';
+  }
+
+  function extractTitles(text) {
+    const titles = [];
+    const lines = text.split('\n');
+    for (const line of lines) {
+      const m = line.match(/^[①②③④⑤\d]+[.、．]\s*(.+)/);
+      if (m) titles.push(m[1].trim());
+      else {
+        const m2 = line.match(/^\d+\..+/);
+        if (m2) titles.push(m2[0].trim());
+      }
+    }
+    if (titles.length === 0) {
+      const match = text.match(/(?:标题备选|标题)[：:]\s*\n?(.+?)(?=\n\n|\n(?:正文|配图|话题)|$)/s);
+      if (match) return match[1].trim();
+    }
+    return titles.length > 0 ? titles.join('\n') : '';
+  }
+
+  function extractTags(text) {
+    const match = text.match(/#[\w一-鿿]+/g);
+    return match || [];
+  }
+
+  function cleanMarkdown(text) {
+    return text.replace(/[🎨🔥💰📅📝📄📊🏷️💡🔍✍️📚🛒💬]/g, '').replace(/\*\*/g, '').trim();
+  }
+
+  function renderCard(card) {
+    const raw = card.raw;
+    const title = extractField(raw, 'title') || '';
+    const content = extractField(raw, 'content') || '';
+    const cover = extractField(raw, 'cover') || '';
+    const tags = extractTags(raw);
+    const type = extractField(raw, 'type') || '';
+    const heat = extractField(raw, 'heat') || '';
+
+    // 提取显示标题（选题方向）
+    let displayTitle = '';
+    const lines = raw.split('\n');
+    for (const line of lines) {
+      const clean = line.replace(/[*-]/g, '').trim();
+      if (clean && clean.length > 6 && clean.length < 50 && !clean.match(/^(标题|正文|配图|话题|类型|热度|角度|#)/)) {
+        displayTitle = clean;
+        break;
+      }
+    }
+    if (!displayTitle) displayTitle = raw.substring(0, 60) + '...';
+
+    return `
+      <div class="card">
+        <div class="card-header">
+          <div class="card-num">选题 #${card.index}</div>
+          <div class="card-title">${displayTitle}</div>
+          <div class="card-meta">
+            ${heat ? `<span>${heat}</span>` : ''}
+            ${type ? `<span>${type}</span>` : ''}
+          </div>
+        </div>
+        <div class="card-body">
+          <button class="copy-btn" onclick="copyCard(this, ${card.index})">📋 复制</button>
+          ${title ? `<h3>📝 标题备选</h3><div class="titles">${title.split('\n').filter(t=>t.trim()).map(t=>`<li>${t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '')}</li>`).join('')}</div>` : ''}
+          ${content ? `<h3>📄 正文框架</h3><div class="content">${content.replace(/\n/g, '<br>')}</div>` : ''}
+          ${cover ? `<h3>🎨 配图建议</h3><div class="cover-box">${cover.replace(/\n/g, '<br>')}</div>` : ''}
+          ${tags.length > 0 ? `<h3>🏷️ 话题标签</h3><div class="tags">${tags.map(t=>`<span>${t}</span>`).join('')}</div>` : ''}
+        </div>
+      </div>
+    `;
+  }
+
+  // ========== API 调用 ==========
+  async function fetchTopics(promptOverride) {
+    const inputEl = document.getElementById('topicInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const container = document.getElementById('cardsContainer');
+    const loading = document.getElementById('loadingContainer');
+    const query = promptOverride || inputEl.value.trim();
+
+    if (!query) {
+      inputEl.focus();
+      return;
+    }
+
+    if (DIFY_API_KEY === 'YOUR_DIFY_API_KEY_HERE') {
+      container.innerHTML = `<div class="error">⚠️ 请先设置 API Key：打开此文件，找到 <code>DIFY_API_KEY</code>，替换成你的 Dify API Key</div>`;
+      return;
+    }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = '生成中...';
+    container.innerHTML = '';
+    loading.innerHTML = `<div class="loading"><div class="spinner"></div>AI 正在搜索和生成选题...</div>`;
+
+    try {
+      const response = await fetch(DIFY_API_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DIFY_API_KEY}`,
+        },
+        body: JSON.stringify({
+          inputs: {},
+          query: query,
+          response_mode: 'blocking',
+          user: 'xiaohongshu-editor',
+        }),
+      });
+
+      if (!response.ok) {
+        throw new Error(`API 请求失败 (${response.status})`);
+      }
+
+      const data = await response.json();
+      const answer = data.answer || '';
+
+      if (!answer) {
+        throw new Error('未获取到回复内容');
+      }
+
+      const cards = parseTopics(answer);
+      loading.innerHTML = '';
+      container.innerHTML = cards.map(c => renderCard(c)).join('');
+
+    } catch (err) {
+      loading.innerHTML = '';
+      container.innerHTML = `<div class="error">❌ ${err.message}<br><br>请检查：<br>1. API Key 是否正确<br>2. Dify 应用是否已发布<br>3. 网络是否能访问 api.dify.ai</div>`;
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = '生成选题';
+    }
+  }
+
+  function copyCard(btn, index) {
+    const card = btn.closest('.card');
+    const text = card.innerText.replace('📋 复制', '');
+    navigator.clipboard.writeText(text).then(() => {
+      btn.textContent = '✅ 已复制';
+      setTimeout(() => btn.textContent = '📋 复制', 1500);
+    });
+  }
+
+  // ========== 回车发送 ==========
+  document.getElementById('topicInput').addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') fetchTopics();
+  });
+</script>
+</body>
+</html>
