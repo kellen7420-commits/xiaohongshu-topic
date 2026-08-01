@@ -1787,17 +1787,28 @@ function pickChip(query) {
 
 // Split AI output: analysis/summary section before first "选题1" marker
 function splitAnalysis(text) {
+  // Method 1: split at "选题1" marker
   const marker = text.match(/选题\s*1\s*[：:]/);
-  if (!marker) return { analysis: '', topics: text };
-  const idx = marker.index;
-  // Walk back to find a clean split point (end of a section, before a heading)
-  const before = text.substring(0, idx).trim();
-  const after = text.substring(idx).trim();
-  // Only treat as analysis if it has some content (>50 chars) with analysis keywords
-  const analysisKeywords = /(?:趋势|分析|套路|总结|规律|关注点|结构|爆款|热门|规律|搜索|近期|当前|赛道)/;
-  if (before.length > 50 && analysisKeywords.test(before)) {
+  if (marker) {
+    const before = text.substring(0, marker.index).trim();
+    const after = text.substring(marker.index).trim();
+    // Analysis keywords — broad set to cover various analysis styles
+    const analysisKeywords = /(?:趋势|分析|套路|总结|规律|关注点|结构|爆款|热门|规律|搜索|近期|当前|赛道|话题|方向|推荐|宠物|养宠|铲屎|猫|狗)/i;
+    // Condition 1: >30 chars with keywords → analysis
+    // Condition 2: >100 chars of substantial text → probably analysis (fallback)
+    if ((before.length > 30 && analysisKeywords.test(before)) || before.length > 100) {
+      return { analysis: before, topics: after };
+    }
+  }
+
+  // Method 2: no "选题1" marker — try any "选题N" marker deep into the text
+  const anyMarker = text.match(/选题\s*\d+\s*[：:]/);
+  if (anyMarker && anyMarker.index > 80) {
+    const before = text.substring(0, anyMarker.index).trim();
+    const after = text.substring(anyMarker.index).trim();
     return { analysis: before, topics: after };
   }
+
   return { analysis: '', topics: text };
 }
 
@@ -1876,11 +1887,13 @@ async function fetchTopics(promptOverride) {
       } else {
         analysisContainer.innerHTML = '';
       }
+      // Filter out blank/sparse cards (raw content < 30 chars)
+      const validCards = cards.filter(c => c.raw.trim().length > 30);
       let cardsHTML = '';
-      if (cards.length === 0 && !analysis) {
+      if (validCards.length === 0 && !analysis) {
         cardsHTML = renderSingleCard(answer);
-      } else if (cards.length > 0) {
-        cardsHTML = cards.map(c => renderTopicCard(c)).join('');
+      } else if (validCards.length > 0) {
+        cardsHTML = validCards.map(c => renderTopicCard(c)).join('');
       } else if (analysis && topics.trim()) {
         cardsHTML = renderSingleCard(topics);
       }
