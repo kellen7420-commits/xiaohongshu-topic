@@ -453,8 +453,9 @@
     .chips-row {
       margin-top: var(--space-5);
       display: flex;
-      flex-direction: column;
       gap: var(--space-2);
+      flex-wrap: wrap;
+      justify-content: center;
       align-items: center;
     }
 
@@ -1333,14 +1334,12 @@
             <button class="btn btn-primary" id="sendBtn" onclick="fetchTopics()">生成选题</button>
           </div>
           <div class="chips-row" id="chipsRow">
-            <div class="chips-subrow">
-              <span class="chip fixed" data-label="🔥 今日热门话题" data-query="搜索小红书和抖音近7天宠物赛道最火的话题和帖子，分析爆款规律。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签。不要只给1个！">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-              <span class="chip" data-label="☀️ 夏季猫咪" data-query="搜索小红书和抖音近7天夏天猫咪热门话题，分析爆款笔记的标题套路和内容结构。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-              <span class="chip" data-label="🐶 夏季狗狗" data-query="搜索小红书和抖音近7天夏天狗狗热门话题，分析爆款笔记套路。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-              <span class="chip" data-label="💰 省钱平替" data-query="搜索小红书近7天猫粮狗粮省钱平替热门话题，分析爆款笔记的写法和评论区用户关注点。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-              <span class="chip" data-label="🏷️ 大牌好价" data-query="搜索小红书近7天大牌猫粮狗粮渠道好价相关热门话题和竞品笔记，分析种草文案套路。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">🏷️ 大牌好价<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-              <button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题">🔄 换一批</button>
-            </div>
+            <span class="chip fixed" data-label="🔥 今日热门话题" data-query="搜索小红书和抖音近7天宠物赛道最火的话题和帖子，分析爆款规律。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签。不要只给1个！">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="☀️ 夏季猫咪" data-query="搜索小红书和抖音近7天夏天猫咪热门话题，分析爆款笔记的标题套路和内容结构。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="🐶 夏季狗狗" data-query="搜索小红书和抖音近7天夏天狗狗热门话题，分析爆款笔记套路。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="💰 省钱平替" data-query="搜索小红书近7天猫粮狗粮省钱平替热门话题，分析爆款笔记的写法和评论区用户关注点。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="🏷️ 大牌好价" data-query="搜索小红书近7天大牌猫粮狗粮渠道好价相关热门话题和竞品笔记，分析种草文案套路。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">🏷️ 大牌好价<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题">🔄 换一批</button>
           </div>
         </div>
       </div>
@@ -2176,30 +2175,11 @@ async function refreshChips() {
       return `<span class="chip" data-label="${escapeHtml(display)}" data-query="${escapeHtml(query)}">${escapeHtml(display)}<button class="chip-save-btn" title="收藏到备选题库">+</button></span>`;
     };
 
-    // 6-7-6 layout: three sub-rows
-    const row1 = topicLines.slice(0, 6);
-    const row2 = topicLines.slice(6, 13);
-    const row3 = topicLines.slice(13, 19);
-
+    // All chips in one flex-wrap container — browser distributes evenly
     let html = '';
-    // Row 1: fixed chip + 5 dynamic (total 6)
-    html += '<div class="chips-subrow">';
     if (fixedHTML) html += fixedHTML;
-    html += row1.map(renderChip).join('');
-    html += '</div>';
-
-    // Row 2: 7 dynamic chips
-    if (row2.length > 0) {
-      html += '<div class="chips-subrow">' + row2.map(renderChip).join('') + '</div>';
-    }
-
-    // Row 3: 6 dynamic chips
-    if (row3.length > 0) {
-      html += '<div class="chips-subrow">' + row3.map(renderChip).join('') + '</div>';
-    }
-
-    // Refresh button on its own line
-    html += '<div class="chips-subrow"><button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题">🔄 换一批</button></div>';
+    html += topicLines.map(renderChip).join('');
+    html += '<button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题" style="flex-shrink:0">🔄 换一批</button>';
 
     chipsRow.innerHTML = html;
 
