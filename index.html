@@ -1935,9 +1935,9 @@ function normalizeMD(text) {
 function extractField(text, field) {
   const clean = normalizeMD(text);
   const patterns = {
-    title:   /(?:标题备选|标题)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:完整正文|正文框架|正文|配图|话题|类型|封面|热度|#|标签|\*\*)|$)/i,
-    content: /(?:完整正文|正文框架|正文)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:配图|话题|类型|封面|热度|#|标签|\*\*)|$)/i,
-    cover:   /(?:配图建议|封面建议|封面怎么做|封面)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:话题|类型|热度|#|标签|\*\*)|$)/i,
+    title:   /(?:标题备选|标题)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:完整正文|正文框架|正文|配图|画面|话题|类型|封面|热度|#|标签|\*\*)|$)/i,
+    content: /(?:完整正文|正文框架|正文|文案)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:配图|画面|话题|类型|封面|热度|#|标签|\*\*)|$)/i,
+    cover:   /(?:配图建议|封面建议|封面怎么做|封面|画面)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:话题|类型|热度|#|标签|\*\*)|$)/i,
     type:    /类型[：:]\s*(.+?)(?=\n|$)/i,
     heat:    /(?:热度|话题热度)[：:]\s*(.+?)(?=\n|$)/i,
   };
@@ -1969,16 +1969,18 @@ function renderTopicCard(card) {
     return '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(cleanRaw.substring(0, 60)) + '...</h4>' + (type ? '<div class="meta-row"><span class="badge accent">' + type + '</span></div>' : '') + '<button class="card-save-btn" data-title="' + escapeHtml(cleanRaw.substring(0, 50)) + '" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到笔记收藏">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制全文</button><div class="body-text">' + escapeHtml(cleanRaw) + '</div>' + (tags.length ? '<div class="section-label">🏷️ 话题标签</div><div class="tags-row">' + tags.map(function(t){return '<span class="tag">'+t+'</span>';}).join('') + '</div>' : '') + '</div></div>';
   }
 
-  // Find display title
+  // Find display title — skip meta lines and "选题X:" markers
   var displayTitle = '';
   var lines = raw.split('\n');
   for (var i = 0; i < lines.length; i++) {
-    var cl = lines[i].replace(/[*-]/g, '').trim();
-    if (cl && cl.length > 10 && cl.length < 80 && !cl.match(/^(完整正文|正文|标题|配图|话题|类型|热度|角度|#|🎨|📝|📄|🏷️|好[的了]|没问题)/)) {
+    var cl = lines[i].replace(/^[*\s*-]+/, '').trim();
+    // Strip "选题X:" or "选题X：" prefix
+    cl = cl.replace(/^选题\s*\d+\s*[：:]\s*/, '').trim();
+    if (cl && cl.length > 8 && cl.length < 80 && !cl.match(/^(完整正文|正文|标题备选|标题|配图建议|配图|话题标签|话题|类型|热度|角度|封面|#|🎨|📝|📄|🏷️|好[的了]|没问题|选题)/)) {
       displayTitle = cl; break;
     }
   }
-  if (!displayTitle) displayTitle = raw.substring(0, 60).replace(/\n/g, ' ') + '...';
+  if (!displayTitle) displayTitle = raw.replace(/^选题\s*\d+\s*[：:]\s*/, '').substring(0, 60).replace(/\n/g, ' ').trim() || '选题 #' + card.index;
 
   var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div><button class="card-save-btn" data-title="' + escapeHtml(displayTitle) + '" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到笔记收藏">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)" style="margin-right:8px">📋 复制</button>';
 
