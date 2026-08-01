@@ -1578,20 +1578,56 @@ const PROXY_URL = '/api/chat';
 const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
 const DIFY_API_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
 
-// Smart fetch: auto-detect environment
-// Returns the full answer text directly (uses blocking mode for reliability)
-async function difyFetch(query) {
-  const body = JSON.stringify({
-    inputs: {},
-    query: query,
-    response_mode: 'blocking',
-    user: 'local-user',
-  });
-
-  const doCall = async (url, useAuth) => {
+// difyFetch: streaming mode with blocking fallback
+// onChunk(fullAnswerSoFar) called on each streamed token — use for live display
+// Returns the complete answer text
+async function difyFetch(query, onChunk) {
+  // ── Streaming call ──
+  const doStream = async (url, useAuth) => {
     const headers = { 'Content-Type': 'application/json' };
     if (useAuth) headers['Authorization'] = 'Bearer ' + DIFY_API_KEY;
-    const res = await fetch(url, { method: 'POST', headers, body });
+    const res = await fetch(url, {
+      method: 'POST', headers,
+      body: JSON.stringify({ inputs: {}, query, response_mode: 'streaming', user: 'local-user' }),
+    });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error('API ' + res.status + ': ' + t.substring(0, 200));
+    }
+    const reader = res.body.getReader();
+    const decoder = new TextDecoder();
+    let full = '', buf = '';
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+      buf += decoder.decode(value, { stream: true });
+      const lines = buf.split('\n');
+      buf = lines.pop();
+      for (const line of lines) {
+        if (!line.startsWith('data: ')) continue;
+        const payload = line.substring(6);
+        if (payload === '[DONE]') continue;
+        try {
+          const j = JSON.parse(payload);
+          if (j.answer) { full += j.answer; if (onChunk) onChunk(full); }
+        } catch {}
+      }
+    }
+    // Flush remaining buffer
+    if (buf.startsWith('data: ') && buf.length > 6) {
+      try { const j = JSON.parse(buf.substring(6)); if (j.answer) full += j.answer; } catch {}
+    }
+    return full;
+  };
+
+  // ── Blocking fallback ──
+  const doBlock = async (url, useAuth) => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (useAuth) headers['Authorization'] = 'Bearer ' + DIFY_API_KEY;
+    const res = await fetch(url, {
+      method: 'POST', headers,
+      body: JSON.stringify({ inputs: {}, query, response_mode: 'blocking', user: 'local-user' }),
+    });
     if (!res.ok) {
       const t = await res.text();
       throw new Error('API ' + res.status + ': ' + t.substring(0, 200));
@@ -1600,25 +1636,28 @@ async function difyFetch(query) {
     return (data.answer || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   };
 
-  // Local file:// → direct to Dify
-  if (location.protocol === 'file:') {
-    return retryCall(() => doCall(DIFY_API_URL, true));
-  }
-  // Deployed: try Vercel proxy first, fallback to direct
-  try {
-    return await doCall(PROXY_URL, false);
-  } catch (e) {
-    return retryCall(() => doCall(DIFY_API_URL, true));
-  }
-}
+  // Retry helper
+  const retry = async (fn) => {
+    try { return await fn(); } catch (e) {
+      await new Promise(r => setTimeout(r, 1000));
+      return await fn();
+    }
+  };
 
-// Retry a call once on failure
-async function retryCall(fn) {
-  try {
-    return await fn();
-  } catch (e) {
-    await new Promise(r => setTimeout(r, 1000));
-    return await fn();
+  // ── Dispatch ──
+  const isLocal = location.protocol === 'file:';
+
+  // Local: stream direct to Dify, fallback to blocking
+  if (isLocal) {
+    try { return await doStream(DIFY_API_URL, true); }
+    catch (e) { return await retry(() => doBlock(DIFY_API_URL, true)); }
+  }
+
+  // Deployed: stream via Vercel proxy, then direct stream, then blocking
+  try { return await doStream(PROXY_URL, false); }
+  catch (e) {
+    try { return await doStream(DIFY_API_URL, true); }
+    catch (e2) { return await retry(() => doBlock(DIFY_API_URL, true)); }
   }
 }
 
@@ -1719,13 +1758,18 @@ async function fetchTopics(promptOverride) {
   document.getElementById('analysisContainer').innerHTML = '';
   errorBanner.classList.remove('active');
   thinkPanel.classList.add('active');
-  thinkContent.innerHTML = '<span style="color:var(--text-tertiary)">🔍 正在搜索和分析中，预计15-30秒...</span>';
+  thinkContent.innerHTML = '<div class="answer-stream" style="font-size:14px;color:var(--text-secondary);line-height:1.8;max-height:350px;overflow-y:auto;white-space:pre-wrap"></div>';
+  const streamEl = thinkContent.querySelector('.answer-stream');
   emptyState.style.display = 'none';
 
   try {
-    const answer = await difyFetch(query);
+    const answer = await difyFetch(query, (partial) => {
+      // Live stream: show AI output as it arrives
+      streamEl.textContent = partial;
+      streamEl.scrollTop = streamEl.scrollHeight;
+    });
 
-    // Show a preview in thinking panel
+    // Show completion indicator
     thinkContent.innerHTML = '<div style="color:var(--success);font-weight:600;margin-bottom:8px">✅ 生成完成！</div>' +
       '<div style="font-size:13px;color:var(--text-secondary);max-height:300px;overflow-y:auto;line-height:1.8">' +
       escapeHtml(answer.substring(0, 500)) + (answer.length > 500 ? '...' : '') + '</div>';
@@ -1906,7 +1950,8 @@ async function generateProductPost() {
   errorBanner.classList.remove('active');
   resultCard.classList.remove('active');
   thinkPanel.classList.add('active');
-  thinkContent.innerHTML = '<span style="color:var(--text-tertiary)">🔍 正在搜索天猫/淘宝/小红书价格和竞品笔记...</span>';
+  thinkContent.innerHTML = '<div class="answer-stream" style="font-size:14px;color:var(--text-secondary);line-height:1.8;max-height:350px;overflow-y:auto;white-space:pre-wrap"></div>';
+  const streamEl = thinkContent.querySelector('.answer-stream');
   emptyState.style.display = 'none';
 
   const prompt = `你是我的AI种草文案专家，请帮我针对以下产品，执行一次全方位的市场调研并输出一篇小红书带货笔记。
@@ -1956,7 +2001,10 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
   let fullAnswer = '';
 
   try {
-    fullAnswer = await difyFetch(prompt);
+    fullAnswer = await difyFetch(prompt, (partial) => {
+      streamEl.textContent = partial;
+      streamEl.scrollTop = streamEl.scrollHeight;
+    });
 
     setTimeout(() => {
       thinkPanel.classList.remove('active');
