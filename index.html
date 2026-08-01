@@ -1371,11 +1371,11 @@
             <button class="btn btn-primary" id="sendBtn" onclick="fetchTopics()">生成选题</button>
           </div>
           <div class="chips-row" id="chipsRow">
-            <span class="chip fixed" data-label="🔥 今日热门话题" data-query="请推荐6个宠物赛道当下最热的小红书图文选题，要有爆款潜力">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="☀️ 夏季猫咪" data-query="请推荐6个关于夏季猫咪养护的小红书图文选题">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="🐶 夏季狗狗" data-query="请推荐6个关于夏季狗狗养护的小红书图文选题">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="💰 省钱平替" data-query="请推荐6个关于猫粮狗粮省钱平替的小红书图文选题">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="🏷️ 大牌好价" data-query="请推荐6个关于大牌猫粮狗粮渠道好价的小红书图文选题">🏷️ 大牌好价<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip fixed" data-label="🔥 今日热门话题" data-query="先简要分析宠物赛道近期热门趋势，然后推荐6个当下最热的小红书图文选题">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="☀️ 夏季猫咪" data-query="先简要分析夏季猫咪话题趋势，然后推荐6个关于夏季猫咪养护的小红书图文选题">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="🐶 夏季狗狗" data-query="先简要分析夏季狗狗话题趋势，然后推荐6个关于夏季狗狗养护的小红书图文选题">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="💰 省钱平替" data-query="先简要分析猫粮狗粮省钱话题趋势，然后推荐6个关于省钱平替的小红书图文选题">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="🏷️ 大牌好价" data-query="先简要分析大牌宠物粮渠道好价话题趋势，然后推荐6个关于大牌好价的小红书图文选题">🏷️ 大牌好价<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
             <button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题">🔄 换一批</button>
           </div>
         </div>
@@ -2231,7 +2231,7 @@ async function refreshChips() {
     const renderChip = (line) => {
       const display = line.replace(/^\d+[.、.\s]+/, '').trim();
       const searchTerm = display.replace(/[^一-龥a-zA-Z0-9]/g, '').trim();
-      const query = `请推荐6个关于【${searchTerm}】的小红书图文选题`;
+      const query = `先简要分析【${searchTerm}】的话题趋势，然后推荐6个小红书图文选题`;
       return `<span class="chip" data-label="${escapeHtml(display)}" data-query="${escapeHtml(query)}">${escapeHtml(display)}<button class="chip-save-btn" title="收藏到备选题库">+</button></span>`;
     };
 
@@ -2554,7 +2554,7 @@ function generateFromSaved(id) {
   }
 
   // Otherwise, generate new topics based on the title
-  const query = `请推荐6个关于【${entry.title}】的小红书图文选题`;
+  const query = `先简要分析【${entry.title}】的话题趋势，然后推荐6个小红书图文选题`;
   fetchTopics(query);
   showToast('正在基于收藏选题生成新内容...');
 }
