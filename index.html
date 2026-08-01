@@ -467,10 +467,10 @@
     sendBtn.textContent = '思考中...';
     container.innerHTML = '';
     thinkArea.classList.add('active');
-    thinkContent.innerHTML = '<span style="color:#999">🔍 正在搜索小红书和抖音热门话题...</span>';
+    thinkContent.innerHTML = '<span style="color:#999">🔍 正在搜索和分析中...</span>';
 
     let fullAnswer = '';
-    let rawText = '';
+    let answerStarted = false;
 
     try {
       const res = await fetch(DIFY_URL, {
@@ -495,7 +495,6 @@
       const reader = res.body.getReader();
       const decoder = new TextDecoder();
       let buffer = '';
-      let isFirstChunk = true;
 
       while (true) {
         const { done, value } = await reader.read();
@@ -510,31 +509,39 @@
           try {
             const json = JSON.parse(line.slice(6));
             if (json.event === 'message' && json.answer) {
-              if (isFirstChunk) {
+              if (!answerStarted) {
                 thinkContent.innerHTML = '';
-                isFirstChunk = false;
+                answerStarted = true;
               }
               fullAnswer += json.answer;
-              rawText += json.answer;
-
-              // Separate think blocks from answer
-              updateThinking(thinkContent, rawText);
+              // Live display: show everything, highlight thinking
+              const display = formatLiveDisplay(fullAnswer);
+              thinkContent.innerHTML = display;
+              thinkContent.scrollTop = thinkContent.scrollHeight;
             }
             if (json.event === 'message_end') break;
-          } catch(e) { /* skip malformed lines */ }
+          } catch(e) {}
         }
       }
 
-      // Done - render cards
-      thinkContent.innerHTML += '<div style="margin-top:12px;color:#4caf50;font-weight:600">✅ 生成完成！正在渲染...</div>';
+      thinkContent.innerHTML += '<div style="margin-top:12px;color:#4caf50;font-weight:600">✅ 生成完成！渲染中...</div>';
 
-      // Extract pure answer (remove think blocks for card parsing)
-      const pureAnswer = fullAnswer.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
-      const cards = parseTopics(pureAnswer);
+      // Clean answer: strip  tags and <think> tags
+      const cleanAnswer = fullAnswer
+        .replace(/<think>[\s\S]*?<\/think>/g, '')
+        .replace(/[\s\S]*?<\/think>/g, '')
+        .trim();
+
+      const cards = parseTopics(cleanAnswer);
+
       thinkArea.classList.remove('active');
-      container.innerHTML = cards.length > 0
-        ? cards.map(c => renderCard(c)).join('')
-        : `<div class="error">未能解析选题，请重试</div>`;
+
+      if (cards.length === 0) {
+        // Fallback: show entire answer in one card
+        container.innerHTML = renderSingleCard(cleanAnswer);
+      } else {
+        container.innerHTML = cards.map(c => renderCard(c)).join('');
+      }
 
     } catch (err) {
       thinkArea.classList.remove('active');
@@ -545,20 +552,28 @@
     }
   }
 
-  function updateThinking(el, text) {
-    // Extract think blocks
+  function formatLiveDisplay(text) {
+    // Highlight thinking sections
     let display = text;
     display = display.replace(/<think>([\s\S]*?)<\/think>/g,
-      (match, content) => `<div class="think-block">🧠 ${escapeHtml(content.trim())}</div>`);
-    display = display.replace(/\n/g, '<br>');
-    el.innerHTML = `<span class="answer-chunk">${display}</span>`;
-    el.scrollTop = el.scrollHeight;
+      (m, c) => `<div class="think-block">💭 思考过程：${escapeHtml(c.trim().substring(0,300))}...</div>`);
+    // Show answer portion (strip tags, keep text)
+    const answer = display.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/[\s\S]*?<\/think>/g, '');
+    const thinking = display.match(/<div class="think-block">[\s\S]*?<\/div>/g);
+    let result = '';
+    if (thinking) result += thinking.join('');
+    if (answer.trim()) result += '<div class="answer-chunk" style="margin-top:8px">' + escapeHtml(answer.trim()).replace(/\n/g, '<br>') + '</div>';
+    return result || escapeHtml(display).replace(/\n/g, '<br>');
   }
 
   function escapeHtml(s) {
     const d = document.createElement('div');
     d.textContent = s;
     return d.innerHTML;
+  }
+
+  function renderSingleCard(text) {
+    return `<div class="card"><div class="card-header"><div class="card-num">生成结果</div></div><div class="card-body"><div class="content" style="white-space:pre-wrap">${escapeHtml(text)}</div></div></div>`;
   }
 
   // ========== Parse Topics ==========
