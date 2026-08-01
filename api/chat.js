@@ -1,21 +1,25 @@
-// Vercel Serverless Function - Dify API 代理
+// 流式代理：浏览器 ← Vercel ← Dify API
+// 流式传输保持连接活跃，不会触发 Vercel 10s 超时限制
+
 export default async function handler(req, res) {
-  // 只允许 POST
+  if (req.method === 'OPTIONS') {
+    res.setHeader('Access-Control-Allow-Origin', '*');
+    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
+    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
+    return res.status(200).end();
+  }
+
   if (req.method !== 'POST') {
     return res.status(405).json({ error: 'Method not allowed' });
   }
 
-  // CORS 头
   res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-  res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-
-  if (req.method === 'OPTIONS') {
-    return res.status(200).end();
-  }
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
 
   try {
-    const response = await fetch('https://api.dify.ai/v1/chat-messages', {
+    const difyRes = await fetch('https://api.dify.ai/v1/chat-messages', {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -24,20 +28,33 @@ export default async function handler(req, res) {
       body: JSON.stringify({
         inputs: {},
         query: req.body.query,
-        response_mode: 'blocking',
-        user: 'xiaohongshu-editor',
+        response_mode: 'streaming',
+        user: 'proxy-user',
       }),
     });
 
-    if (!response.ok) {
-      const err = await response.text();
-      return res.status(response.status).json({ error: err });
+    if (!difyRes.ok) {
+      const errText = await difyRes.text();
+      res.write(`data: ${JSON.stringify({ error: `Dify API ${difyRes.status}: ${errText.substring(0,100)}` })}\n\n`);
+      return res.end();
     }
 
-    const data = await response.json();
-    return res.status(200).json({ answer: data.answer });
+    const reader = difyRes.body.getReader();
+    const decoder = new TextDecoder();
+
+    while (true) {
+      const { done, value } = await reader.read();
+      if (done) break;
+
+      const chunk = decoder.decode(value, { stream: true });
+      // 直接转发 SSE 数据给浏览器
+      res.write(chunk);
+    }
+
+    res.end();
 
   } catch (err) {
-    return res.status(500).json({ error: err.message });
+    res.write(`data: ${JSON.stringify({ error: err.message })}\n\n`);
+    res.end();
   }
 }

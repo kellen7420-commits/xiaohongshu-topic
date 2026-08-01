@@ -449,8 +449,7 @@
 
 <script>
   // ========== Config ==========
-  const DIFY_URL = 'https://api.dify.ai/v1/chat-messages';
-  const DIFY_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
+  const PROXY_URL = '/api/chat';  // Vercel 流式代理，防超时 + 防墙
 
   // ========== Streaming Fetch ==========
   async function fetchTopics(promptOverride) {
@@ -473,18 +472,10 @@
     let answerStarted = false;
 
     try {
-      const res = await fetch(DIFY_URL, {
+      const res = await fetch(PROXY_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DIFY_KEY}`,
-        },
-        body: JSON.stringify({
-          inputs: {},
-          query: query,
-          response_mode: 'streaming',
-          user: 'topic-editor',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query }),
       });
 
       if (!res.ok) {
@@ -711,18 +702,10 @@ ${input}
 4. 输出完整的 Markdown 格式，方便我直接复制存入知识库`;
 
     try {
-      const res = await fetch(DIFY_URL, {
+      const res = await fetch(PROXY_URL, {
         method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DIFY_KEY}`,
-        },
-        body: JSON.stringify({
-          inputs: {},
-          query: feedPrompt,
-          response_mode: 'streaming',
-          user: 'feed-editor',
-        }),
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: feedPrompt }),
       });
 
       if (!res.ok) throw new Error(`API ${res.status}`);
