@@ -1371,7 +1371,7 @@
             <button class="btn btn-primary" id="sendBtn" onclick="fetchTopics()">生成选题</button>
           </div>
           <div class="chips-row" id="chipsRow">
-            <span class="chip fixed" data-label="🔥 今日热门话题" data-query="先简要分析宠物赛道近期热门趋势，然后推荐6个当下最热的小红书图文选题">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip fixed" data-label="🔥 今日热门话题" data-query="先简要分析当下宠物赛道什么话题最火、为什么火，然后推荐6个爆款潜力最大的小红书图文选题">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
             <span class="chip" data-label="☀️ 夏季猫咪" data-query="先简要分析夏季猫咪话题趋势，然后推荐6个关于夏季猫咪养护的小红书图文选题">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
             <span class="chip" data-label="🐶 夏季狗狗" data-query="先简要分析夏季狗狗话题趋势，然后推荐6个关于夏季狗狗养护的小红书图文选题">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
             <span class="chip" data-label="💰 省钱平替" data-query="先简要分析猫粮狗粮省钱话题趋势，然后推荐6个关于省钱平替的小红书图文选题">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
@@ -1793,9 +1793,9 @@ function splitAnalysis(text) {
   // Walk back to find a clean split point (end of a section, before a heading)
   const before = text.substring(0, idx).trim();
   const after = text.substring(idx).trim();
-  // Only treat as analysis if it has substantial content (>100 chars) with analysis keywords
-  const analysisKeywords = /(?:趋势|分析|套路|总结|规律|关注点|结构|爆款|热门|规律|搜索)/;
-  if (before.length > 100 && analysisKeywords.test(before)) {
+  // Only treat as analysis if it has some content (>50 chars) with analysis keywords
+  const analysisKeywords = /(?:趋势|分析|套路|总结|规律|关注点|结构|爆款|热门|规律|搜索|近期|当前|赛道)/;
+  if (before.length > 50 && analysisKeywords.test(before)) {
     return { analysis: before, topics: after };
   }
   return { analysis: '', topics: text };
