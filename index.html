@@ -110,6 +110,7 @@
       flex-direction: column;
       z-index: 10;
       user-select: none;
+      transition: width var(--duration-slow) var(--ease-out), min-width var(--duration-slow) var(--ease-out);
     }
 
     .sidebar-brand {
@@ -244,6 +245,7 @@
       min-height: 100vh;
       display: flex;
       flex-direction: column;
+      transition: margin-left var(--duration-slow) var(--ease-out);
     }
 
     .topbar {
@@ -1215,7 +1217,8 @@
     /* ============================================
        RESPONSIVE
        ============================================ */
-    @media (max-width: 768px) {
+    /* Sidebar collapse for laptops ≤1024px (e.g. 13" MacBook) */
+    @media (max-width: 1024px) {
       .sidebar {
         width: 56px;
         min-width: 56px;
@@ -1232,9 +1235,25 @@
 
       .topbar { padding: 0 var(--space-4); }
 
+      .content { padding: var(--space-5); }
+
+      /* Tighter chips */
+      .chip {
+        font-size: 13px;
+        padding: 6px 12px;
+      }
+    }
+
+    /* Mobile: single-column cards + tighter padding */
+    @media (max-width: 768px) {
       .content { padding: var(--space-4); }
 
       .cards-grid { grid-template-columns: 1fr; }
+
+      .chip {
+        font-size: 12px;
+        padding: 5px 10px;
+      }
     }
   </style>
 </head>
