@@ -304,6 +304,7 @@
       flex: 1;
       padding: var(--space-8);
       width: 100%;
+      overflow-x: hidden;
     }
 
     .module { display: none; }
@@ -481,6 +482,9 @@
       white-space: nowrap;
       line-height: 1.4;
       position: relative;
+      max-width: 180px;
+      overflow: hidden;
+      text-overflow: ellipsis;
     }
 
     .chip:hover {
@@ -633,6 +637,8 @@
       color: var(--text-secondary);
       line-height: 1.9;
       white-space: pre-wrap;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
 
     .topic-card .card-content .cover-note {
@@ -720,6 +726,9 @@
       color: var(--text-secondary);
       max-height: 600px;
       overflow-y: auto;
+      overflow-x: auto;
+      word-break: break-word;
+      overflow-wrap: break-word;
     }
 
     .analysis-panel.collapsed .analysis-body {
