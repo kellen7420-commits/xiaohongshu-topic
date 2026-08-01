@@ -1617,7 +1617,7 @@ async function difyFetch(query, onChunk) {
     if (buf.startsWith('data: ') && buf.length > 6) {
       try { const j = JSON.parse(buf.substring(6)); if (j.answer) full += j.answer; } catch {}
     }
-    return full;
+    return full.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
   };
 
   // ── Blocking fallback ──
@@ -2116,12 +2116,23 @@ async function refreshChips() {
   refreshBtn.disabled = true;
   refreshBtn.textContent = '⏳ 搜索中...';
 
-  const prompt = `搜索小红书+抖音宠物赛道当下最热话题（结合${new Date().toLocaleDateString('zh-CN')}季节节日），给19个选题方向。纯输出emoji+短语，每行一个。注意：每个方向前面必须带一个相关emoji。`;
+  const prompt = `搜索小红书+抖音宠物赛道当下最热话题（结合${new Date().toLocaleDateString('zh-CN')}季节节日），给我19个选题方向。
+
+⚠️ 你必须严格遵守以下格式，否则结果无法使用：
+- 每行一个话题，纯emoji+短语（不超过8个字）
+- 不要序号、不要开头语、不要结尾语、不要任何解释文字
+- 直接输出19行，每行格式示例：
+🐱 猫咪夏日降温
+🐶 狗狗掉毛护理
+- 开头不要写"以下是..."或"好的"或任何废话`;
 
   try {
     const answer = await difyFetch(prompt);
 
-    const topicLines = answer.split('\n').filter(l => l.trim()).slice(0, 19);
+    const topicLines = answer.split('\n')
+      .map(l => l.replace(/^\d+[.、.\s]+/, '').trim())
+      .filter(l => l && /\p{Extended_Pictographic}/u.test(l.charAt(0)))
+      .slice(0, 19);
 
     if (topicLines.length === 0) throw new Error('未获取到话题');
 
