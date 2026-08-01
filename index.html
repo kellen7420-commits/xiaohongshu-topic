@@ -1371,11 +1371,11 @@
             <button class="btn btn-primary" id="sendBtn" onclick="fetchTopics()">生成选题</button>
           </div>
           <div class="chips-row" id="chipsRow">
-            <span class="chip fixed" data-label="🔥 今日热门话题" data-query="搜索小红书和抖音近7天宠物赛道最火的话题和帖子，分析爆款规律。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="☀️ 夏季猫咪" data-query="搜索小红书和抖音近7天夏天猫咪热门话题，分析爆款笔记的标题套路和内容结构。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="🐶 夏季狗狗" data-query="搜索小红书和抖音近7天夏天狗狗热门话题，分析爆款笔记套路。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="💰 省钱平替" data-query="搜索小红书近7天猫粮狗粮省钱平替热门话题，分析爆款笔记的写法和评论区用户关注点。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
-            <span class="chip" data-label="🏷️ 大牌好价" data-query="搜索小红书近7天大牌猫粮狗粮渠道好价相关热门话题和竞品笔记，分析种草文案套路。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！">🏷️ 大牌好价<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip fixed" data-label="🔥 今日热门话题" data-query="请推荐6个宠物赛道当下最热的小红书图文选题，要有爆款潜力">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="☀️ 夏季猫咪" data-query="请推荐6个关于夏季猫咪养护的小红书图文选题">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="🐶 夏季狗狗" data-query="请推荐6个关于夏季狗狗养护的小红书图文选题">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="💰 省钱平替" data-query="请推荐6个关于猫粮狗粮省钱平替的小红书图文选题">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+            <span class="chip" data-label="🏷️ 大牌好价" data-query="请推荐6个关于大牌猫粮狗粮渠道好价的小红书图文选题">🏷️ 大牌好价<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
             <button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题">🔄 换一批</button>
           </div>
         </div>
@@ -2209,15 +2209,9 @@ async function refreshChips() {
   refreshBtn.disabled = true;
   refreshBtn.textContent = '⏳ 搜索中...';
 
-  const prompt = `搜索小红书+抖音宠物赛道当下最热话题（结合${new Date().toLocaleDateString('zh-CN')}季节节日），给我19个选题方向。
-
-⚠️ 你必须严格遵守以下格式，否则结果无法使用：
-- 每行一个话题，纯emoji+短语（不超过8个字）
-- 不要序号、不要开头语、不要结尾语、不要任何解释文字
-- 直接输出19行，每行格式示例：
+  const prompt = `今天是${new Date().toLocaleDateString('zh-CN')}，请列出19个宠物赛道当下最热的小红书选题方向，纯emoji+短语，每行一个，不要序号和废话。示例：
 🐱 猫咪夏日降温
-🐶 狗狗掉毛护理
-- 开头不要写"以下是..."或"好的"或任何废话`;
+🐶 狗狗掉毛护理`;
 
   try {
     const answer = await difyFetch(prompt);
@@ -2237,7 +2231,7 @@ async function refreshChips() {
     const renderChip = (line) => {
       const display = line.replace(/^\d+[.、.\s]+/, '').trim();
       const searchTerm = display.replace(/[^一-龥a-zA-Z0-9]/g, '').trim();
-      const query = `搜索小红书和抖音近7天【${searchTerm}】相关热门帖子和爆款笔记，分析标题套路、正文结构和评论区用户关注点。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！`;
+      const query = `请推荐6个关于【${searchTerm}】的小红书图文选题`;
       return `<span class="chip" data-label="${escapeHtml(display)}" data-query="${escapeHtml(query)}">${escapeHtml(display)}<button class="chip-save-btn" title="收藏到备选题库">+</button></span>`;
     };
 
@@ -2560,7 +2554,7 @@ function generateFromSaved(id) {
   }
 
   // Otherwise, generate new topics based on the title
-  const query = `搜索小红书和抖音近7天【${entry.title}】相关热门帖子和爆款笔记，分析标题套路、正文结构和评论区用户关注点。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！`;
+  const query = `请推荐6个关于【${entry.title}】的小红书图文选题`;
   fetchTopics(query);
   showToast('正在基于收藏选题生成新内容...');
 }
