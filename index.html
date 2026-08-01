@@ -11,31 +11,60 @@
       background: #fef7f0;
       min-height: 100vh;
     }
+
+    /* Header */
     .header {
       background: linear-gradient(135deg, #ff6b35, #ff4444);
       color: white;
-      padding: 24px 32px;
+      padding: 20px 24px;
       text-align: center;
       box-shadow: 0 2px 12px rgba(255,107,53,0.3);
     }
-    .header h1 { font-size: 24px; margin-bottom: 4px; }
-    .header p { font-size: 13px; opacity: 0.85; }
+    .header h1 { font-size: 22px; }
+    .header p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
+    .header-actions {
+      display: flex;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 10px;
+      flex-wrap: wrap;
+    }
+    .header-actions button {
+      background: rgba(255,255,255,0.2);
+      border: 1px solid rgba(255,255,255,0.3);
+      color: white;
+      border-radius: 8px;
+      padding: 6px 14px;
+      font-size: 12px;
+      cursor: pointer;
+      transition: background 0.2s;
+    }
+    .header-actions button:hover { background: rgba(255,255,255,0.35); }
+    .header-actions button.primary-btn {
+      background: white;
+      color: #ff6b35;
+      font-weight: 600;
+      border: none;
+    }
+
     .container { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
+
+    /* Input */
     .input-area {
       background: white;
       border-radius: 16px;
-      padding: 20px;
+      padding: 16px 20px;
       box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-      margin-bottom: 24px;
+      margin-bottom: 16px;
       display: flex;
-      gap: 12px;
+      gap: 10px;
     }
     .input-area input {
       flex: 1;
       border: 2px solid #eee;
       border-radius: 12px;
-      padding: 14px 18px;
-      font-size: 15px;
+      padding: 12px 16px;
+      font-size: 14px;
       outline: none;
       transition: border 0.2s;
     }
@@ -45,35 +74,84 @@
       color: white;
       border: none;
       border-radius: 12px;
-      padding: 14px 28px;
-      font-size: 15px;
+      padding: 12px 24px;
+      font-size: 14px;
       font-weight: 600;
       cursor: pointer;
       white-space: nowrap;
       transition: opacity 0.2s;
     }
-    .input-area button:hover { opacity: 0.9; }
+    .input-area button:hover:not(:disabled) { opacity: 0.9; }
     .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
+
     .quick-btns {
       display: flex;
-      gap: 8px;
+      gap: 6px;
       flex-wrap: wrap;
-      margin-bottom: 24px;
+      margin-bottom: 16px;
     }
     .quick-btns button {
       background: white;
       border: 1.5px solid #ffe0d3;
       border-radius: 20px;
-      padding: 8px 16px;
-      font-size: 13px;
+      padding: 7px 14px;
+      font-size: 12px;
       color: #ff6b35;
       cursor: pointer;
       transition: all 0.2s;
     }
-    .quick-btns button:hover {
-      background: #fff0ea;
-      border-color: #ff6b35;
+    .quick-btns button:hover { background: #fff0ea; border-color: #ff6b35; }
+
+    /* Thinking Bubble */
+    .thinking-area {
+      background: #f8f8ff;
+      border: 1.5px solid #e0e0ff;
+      border-radius: 14px;
+      padding: 16px 20px;
+      margin-bottom: 20px;
+      display: none;
     }
+    .thinking-area.active { display: block; }
+    .thinking-title {
+      font-size: 13px;
+      color: #666;
+      font-weight: 600;
+      margin-bottom: 8px;
+      display: flex;
+      align-items: center;
+      gap: 6px;
+    }
+    .thinking-title .dot { animation: pulse 1.4s infinite; }
+    .thinking-title .dot:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-title .dot:nth-child(3) { animation-delay: 0.4s; }
+    @keyframes pulse {
+      0%, 100% { opacity: 0.3; }
+      50% { opacity: 1; }
+    }
+    .thinking-content {
+      font-size: 13px;
+      color: #555;
+      line-height: 1.8;
+      max-height: 400px;
+      overflow-y: auto;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .thinking-content .think-block {
+      background: #f0f0ff;
+      border-left: 3px solid #aab;
+      padding: 8px 12px;
+      margin: 6px 0;
+      border-radius: 0 8px 8px 0;
+      font-size: 12px;
+      color: #777;
+      font-style: italic;
+    }
+    .thinking-content .answer-chunk {
+      color: #333;
+    }
+
+    /* Cards Grid */
     .cards-grid {
       display: grid;
       grid-template-columns: 1fr;
@@ -81,15 +159,16 @@
     }
     @media (min-width: 900px) {
       .cards-grid { grid-template-columns: repeat(2, 1fr); }
-      .card:nth-child(5) { grid-column: 1 / -1; }
+      .cards-grid .card:nth-child(5) { grid-column: 1 / -1; }
     }
     .card {
       background: white;
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-      transition: transform 0.2s, box-shadow 0.2s;
       border: 1px solid #f0f0f0;
+      transition: transform 0.2s, box-shadow 0.2s;
+      position: relative;
     }
     .card:hover {
       transform: translateY(-2px);
@@ -101,142 +180,203 @@
       border-bottom: 1px solid #ffe0d3;
     }
     .card-num {
-      font-size: 12px;
+      font-size: 11px;
       color: #ff6b35;
       font-weight: 700;
       text-transform: uppercase;
       letter-spacing: 1px;
-      margin-bottom: 6px;
+      margin-bottom: 4px;
     }
     .card-title {
-      font-size: 18px;
+      font-size: 17px;
       font-weight: 700;
       color: #1a1a1a;
       line-height: 1.4;
     }
     .card-meta {
       display: flex;
-      gap: 12px;
-      margin-top: 8px;
-      font-size: 12px;
+      gap: 8px;
+      margin-top: 6px;
+      font-size: 11px;
       color: #999;
+      flex-wrap: wrap;
     }
     .card-meta span {
       background: #f8f8f8;
-      padding: 3px 10px;
+      padding: 2px 8px;
       border-radius: 10px;
     }
-    .card-body { padding: 20px; }
+    .card-body { padding: 20px; position: relative; }
     .card-body h3 {
-      font-size: 13px;
+      font-size: 12px;
       color: #ff6b35;
-      margin: 14px 0 6px;
+      margin: 14px 0 4px;
       text-transform: uppercase;
       letter-spacing: 1px;
     }
+    .card-body h3:first-child { margin-top: 0; }
     .card-body .titles {
       list-style: none;
-      margin: 8px 0;
+      margin: 6px 0;
     }
     .card-body .titles li {
-      padding: 6px 0;
-      font-size: 14px;
+      padding: 5px 0;
+      font-size: 13px;
       color: #333;
       border-bottom: 1px solid #f5f5f5;
     }
-    .card-body .titles li::before { content: "① ② ③ ④ ⑤".split(" ")[0]; margin-right: 6px; color: #ff6b35; font-size: 12px; }
     .card-body .content {
-      font-size: 14px;
+      font-size: 13px;
       color: #555;
       line-height: 1.8;
     }
     .card-body .tags {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
-      margin-top: 8px;
+      gap: 5px;
+      margin-top: 6px;
     }
     .card-body .tags span {
       background: #f0f7ff;
       color: #3b82f6;
-      padding: 4px 10px;
+      padding: 3px 8px;
       border-radius: 12px;
-      font-size: 12px;
+      font-size: 11px;
     }
     .card-body .cover-box {
       background: #fafafa;
       border: 1px dashed #ddd;
       border-radius: 10px;
-      padding: 14px;
-      margin-top: 8px;
-      font-size: 13px;
+      padding: 12px;
+      margin-top: 6px;
+      font-size: 12px;
       color: #777;
       line-height: 1.7;
-    }
-    .loading {
-      text-align: center;
-      padding: 60px 20px;
-      color: #999;
-    }
-    .loading .spinner {
-      width: 40px;
-      height: 40px;
-      border: 4px solid #eee;
-      border-top-color: #ff6b35;
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin: 0 auto 16px;
-    }
-    @keyframes spin { to { transform: rotate(360deg); } }
-    .error {
-      background: #fff0f0;
-      color: #cc3333;
-      padding: 16px 20px;
-      border-radius: 12px;
-      margin-bottom: 20px;
-      border: 1px solid #ffcccc;
-    }
-    .empty {
-      text-align: center;
-      padding: 80px 20px;
-      color: #bbb;
-    }
-    .empty .icon { font-size: 56px; margin-bottom: 12px; }
-    .footer {
-      text-align: center;
-      padding: 40px;
-      color: #ccc;
-      font-size: 12px;
     }
     .copy-btn {
       position: absolute;
       top: 8px;
       right: 8px;
-      background: rgba(255,255,255,0.8);
+      background: rgba(255,255,255,0.9);
       border: 1px solid #ddd;
       border-radius: 6px;
-      padding: 4px 10px;
-      font-size: 11px;
+      padding: 3px 8px;
+      font-size: 10px;
       cursor: pointer;
       opacity: 0;
       transition: opacity 0.2s;
+      z-index: 2;
     }
-    .card-body { position: relative; }
     .card-body:hover .copy-btn { opacity: 1; }
-    .header-actions {
+
+    /* Modal */
+    .modal-overlay {
+      display: none;
+      position: fixed;
+      inset: 0;
+      background: rgba(0,0,0,0.5);
+      z-index: 100;
+      align-items: center;
+      justify-content: center;
+    }
+    .modal-overlay.active { display: flex; }
+    .modal {
+      background: white;
+      border-radius: 20px;
+      padding: 28px;
+      width: 90%;
+      max-width: 600px;
+      max-height: 80vh;
+      overflow-y: auto;
+      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+    }
+    .modal h2 { font-size: 18px; margin-bottom: 8px; }
+    .modal .subtitle { font-size: 12px; color: #999; margin-bottom: 16px; }
+    .modal textarea {
+      width: 100%;
+      height: 180px;
+      border: 2px solid #eee;
+      border-radius: 12px;
+      padding: 14px;
+      font-size: 14px;
+      font-family: inherit;
+      resize: vertical;
+      outline: none;
+      transition: border 0.2s;
+    }
+    .modal textarea:focus { border-color: #ff6b35; }
+    .modal .btn-row {
+      display: flex;
+      gap: 10px;
+      margin-top: 16px;
+      justify-content: flex-end;
+    }
+    .modal .btn-row button {
+      padding: 10px 20px;
+      border-radius: 10px;
+      font-size: 14px;
+      cursor: pointer;
+      border: none;
+      font-weight: 600;
+    }
+    .modal .btn-cancel {
+      background: #f0f0f0;
+      color: #666;
+    }
+    .modal .btn-submit {
+      background: linear-gradient(135deg, #ff6b35, #ff4444);
+      color: white;
+    }
+    .modal .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
+    .modal .result {
+      margin-top: 16px;
+      background: #f8f8f8;
+      border-radius: 12px;
+      padding: 16px;
+      font-size: 13px;
+      line-height: 1.7;
+      white-space: pre-wrap;
+      max-height: 300px;
+      overflow-y: auto;
+      display: none;
+    }
+    .modal .result.active { display: block; }
+    .modal .kb-select {
       display: flex;
       gap: 8px;
-      justify-content: center;
-      margin-top: 8px;
+      flex-wrap: wrap;
+      margin: 10px 0;
     }
-    .header-actions button {
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
-      color: white;
-      border-radius: 8px;
-      padding: 6px 14px;
+    .modal .kb-select label {
       font-size: 12px;
+      padding: 4px 12px;
+      border-radius: 14px;
+      background: #f0f0f0;
       cursor: pointer;
+      transition: all 0.2s;
+    }
+    .modal .kb-select label.checked {
+      background: #fff0ea;
+      color: #ff6b35;
+      font-weight: 600;
+    }
+
+    /* Error */
+    .error {
+      background: #fff0f0;
+      color: #cc3333;
+      padding: 14px 18px;
+      border-radius: 12px;
+      margin-bottom: 16px;
+      border: 1px solid #ffcccc;
+      font-size: 13px;
+    }
+
+    .footer {
+      text-align: center;
+      padding: 40px;
+      color: #ccc;
+      font-size: 11px;
     }
   </style>
 </head>
@@ -246,8 +386,9 @@
   <h1>🐾 小红书选题助手</h1>
   <p>宠物赛道 · 大牌正品经销商 · 每日选题面板</p>
   <div class="header-actions">
-    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 今日热门选题</button>
-    <button onclick="document.querySelector('.input-area input').focus()">💬 输入自定义选题</button>
+    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 今日热门</button>
+    <button class="primary-btn" onclick="openFeedModal()">🥣 喂饭给AI</button>
+    <button onclick="document.querySelector('.input-area input').focus()">💬 自定义</button>
   </div>
 </div>
 
@@ -258,85 +399,197 @@
   </div>
 
   <div class="quick-btns">
-    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 今日热门</button>
+    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 热门话题</button>
     <button onclick="fetchTopics('夏天猫咪相关的热门话题，推荐5个选题')">☀️ 夏季猫咪</button>
     <button onclick="fetchTopics('夏天狗狗相关的热门话题，推荐5个选题')">🐶 夏季狗狗</button>
     <button onclick="fetchTopics('宠物粮省钱平价相关的热门话题，推荐5个选题')">💰 省钱平替</button>
-    <button onclick="fetchTopics('大牌猫粮狗粮的好价渠道相关选题，推荐5个')">🏷️ 大牌好价</button>
+    <button onclick="fetchTopics('大牌猫粮狗粮渠道好价相关选题，推荐5个')">🏷️ 大牌好价</button>
+  </div>
+
+  <!-- Thinking Bubble -->
+  <div class="thinking-area" id="thinkingArea">
+    <div class="thinking-title">
+      💭 AI 正在思考 <span class="dot">●</span><span class="dot">●</span><span class="dot">●</span>
+    </div>
+    <div class="thinking-content" id="thinkingContent"></div>
   </div>
 
   <div id="cardsContainer"></div>
-  <div id="loadingContainer"></div>
 </div>
 
-<div class="footer">小红书选题助手 · 大牌正品，渠道好价 · Powered by Dify + DeepSeek</div>
+<div class="footer">大牌正品 · 渠道好价 · Powered by Dify + DeepSeek</div>
+
+<!-- Feed AI Modal -->
+<div class="modal-overlay" id="feedModal">
+  <div class="modal">
+    <h2>🥣 喂饭给AI</h2>
+    <p class="subtitle">发现好的帖子或博主？直接贴过来，AI 帮你整理到知识库</p>
+
+    <div class="kb-select" id="kbSelect">
+      <label data-kb="kb-2-产品库">📦 产品库</label>
+      <label data-kb="kb-3-对标账号" class="checked">🎯 对标账号</label>
+      <label data-kb="kb-4-爆款笔记风格样本">📝 风格样本</label>
+      <label data-kb="kb-1-博主人设">👤 博主人设</label>
+    </div>
+
+    <textarea id="feedInput" placeholder="粘贴这里：
+- 小红书/抖音帖子链接 + 你想提取的内容
+- 博主主页链接 + 几句话描述为什么关注ta
+- 一篇你觉得写得很好的笔记原文
+- 或者直接描述你想让AI记住什么..."></textarea>
+
+    <div class="result" id="feedResult"></div>
+
+    <div class="btn-row">
+      <button class="btn-cancel" onclick="closeFeedModal()">取消</button>
+      <button class="btn-submit" id="feedBtn" onclick="feedAI()">🤖 整理入库</button>
+    </div>
+  </div>
+</div>
 
 <script>
-  // ========== 配置 ==========
-  const PROXY_URL = 'https://api.dify.ai/v1/chat-messages';
-  const DIFY_API_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
+  // ========== Config ==========
+  const DIFY_URL = 'https://api.dify.ai/v1/chat-messages';
+  const DIFY_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
 
-  // ========== 解析选题 ==========
+  // ========== Streaming Fetch ==========
+  async function fetchTopics(promptOverride) {
+    const inputEl = document.getElementById('topicInput');
+    const sendBtn = document.getElementById('sendBtn');
+    const container = document.getElementById('cardsContainer');
+    const thinkArea = document.getElementById('thinkingArea');
+    const thinkContent = document.getElementById('thinkingContent');
+    const query = promptOverride || inputEl.value.trim();
+
+    if (!query) { inputEl.focus(); return; }
+
+    sendBtn.disabled = true;
+    sendBtn.textContent = '思考中...';
+    container.innerHTML = '';
+    thinkArea.classList.add('active');
+    thinkContent.innerHTML = '<span style="color:#999">🔍 正在搜索小红书和抖音热门话题...</span>';
+
+    let fullAnswer = '';
+    let rawText = '';
+
+    try {
+      const res = await fetch(DIFY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DIFY_KEY}`,
+        },
+        body: JSON.stringify({
+          inputs: {},
+          query: query,
+          response_mode: 'streaming',
+          user: 'topic-editor',
+        }),
+      });
+
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(`API ${res.status}: ${errText.substring(0,200)}`);
+      }
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let isFirstChunk = true;
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.event === 'message' && json.answer) {
+              if (isFirstChunk) {
+                thinkContent.innerHTML = '';
+                isFirstChunk = false;
+              }
+              fullAnswer += json.answer;
+              rawText += json.answer;
+
+              // Separate think blocks from answer
+              updateThinking(thinkContent, rawText);
+            }
+            if (json.event === 'message_end') break;
+          } catch(e) { /* skip malformed lines */ }
+        }
+      }
+
+      // Done - render cards
+      thinkContent.innerHTML += '<div style="margin-top:12px;color:#4caf50;font-weight:600">✅ 生成完成！正在渲染...</div>';
+
+      // Extract pure answer (remove think blocks for card parsing)
+      const pureAnswer = fullAnswer.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+      const cards = parseTopics(pureAnswer);
+      thinkArea.classList.remove('active');
+      container.innerHTML = cards.length > 0
+        ? cards.map(c => renderCard(c)).join('')
+        : `<div class="error">未能解析选题，请重试</div>`;
+
+    } catch (err) {
+      thinkArea.classList.remove('active');
+      container.innerHTML = `<div class="error">❌ ${err.message}</div>`;
+    } finally {
+      sendBtn.disabled = false;
+      sendBtn.textContent = '生成选题';
+    }
+  }
+
+  function updateThinking(el, text) {
+    // Extract think blocks
+    let display = text;
+    display = display.replace(/<think>([\s\S]*?)<\/think>/g,
+      (match, content) => `<div class="think-block">🧠 ${escapeHtml(content.trim())}</div>`);
+    display = display.replace(/\n/g, '<br>');
+    el.innerHTML = `<span class="answer-chunk">${display}</span>`;
+    el.scrollTop = el.scrollHeight;
+  }
+
+  function escapeHtml(s) {
+    const d = document.createElement('div');
+    d.textContent = s;
+    return d.innerHTML;
+  }
+
+  // ========== Parse Topics ==========
   function parseTopics(text) {
     const cards = [];
-    // 按选题序号分割
     const sections = text.split(/选题\s*\d+[：:]/g);
     const titles = text.match(/选题\s*\d+[：:].*?(?=选题\s*\d|$)/gs);
 
     if (titles && titles.length > 0) {
-      titles.forEach((section, i) => {
-        cards.push({ index: i + 1, raw: section.trim() });
-      });
+      titles.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
     } else if (sections.length > 1) {
-      sections.slice(1).forEach((section, i) => {
-        cards.push({ index: i + 1, raw: section.trim() });
-      });
+      sections.slice(1).forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
     } else {
-      // Fallback：返回原文
       cards.push({ index: 1, raw: text });
     }
     return cards;
   }
 
-  function extractField(text, fieldName) {
+  function extractField(text, field) {
     const patterns = {
       title: /(?:标题备选|标题)[：:]\s*\n?(.+?)(?=\n\n|\n(?:正文|配图|话题|类型|角度|#)|$)/s,
       content: /(?:正文框架|正文)[：:]\s*\n?(.+?)(?=\n\n|\n(?:配图|话题|类型|封面|#)|$)/s,
       cover: /(?:配图建议|封面建议|封面怎么做)[：:]\s*\n?(.+?)(?=\n\n|\n(?:话题|类型|#)|$)/s,
-      tags: /(?:话题标签|标签)[：:]\s*\n?(.+?)(?=\n\n|\n(?:类型|封面)|$)/s,
       type: /(?:类型)[：:]\s*(.+?)(?=\n|$)/,
       heat: /(?:热度|话题热度)[：:]\s*(.+?)(?=\n|$)/,
     };
-    const match = text.match(patterns[fieldName]);
+    const match = text.match(patterns[field]);
     return match ? match[1].trim() : '';
   }
 
-  function extractTitles(text) {
-    const titles = [];
-    const lines = text.split('\n');
-    for (const line of lines) {
-      const m = line.match(/^[①②③④⑤\d]+[.、．]\s*(.+)/);
-      if (m) titles.push(m[1].trim());
-      else {
-        const m2 = line.match(/^\d+\..+/);
-        if (m2) titles.push(m2[0].trim());
-      }
-    }
-    if (titles.length === 0) {
-      const match = text.match(/(?:标题备选|标题)[：:]\s*\n?(.+?)(?=\n\n|\n(?:正文|配图|话题)|$)/s);
-      if (match) return match[1].trim();
-    }
-    return titles.length > 0 ? titles.join('\n') : '';
-  }
-
-  function extractTags(text) {
-    const match = text.match(/#[\w一-鿿]+/g);
-    return match || [];
-  }
-
-  function cleanMarkdown(text) {
-    return text.replace(/[🎨🔥💰📅📝📄📊🏷️💡🔍✍️📚🛒💬]/g, '').replace(/\*\*/g, '').trim();
-  }
+  function extractTags(text) { return text.match(/#[\w一-鿿]+/g) || []; }
 
   function renderCard(card) {
     const raw = card.raw;
@@ -347,14 +600,12 @@
     const type = extractField(raw, 'type') || '';
     const heat = extractField(raw, 'heat') || '';
 
-    // 提取显示标题（选题方向）
     let displayTitle = '';
     const lines = raw.split('\n');
     for (const line of lines) {
       const clean = line.replace(/[*-]/g, '').trim();
-      if (clean && clean.length > 6 && clean.length < 50 && !clean.match(/^(标题|正文|配图|话题|类型|热度|角度|#)/)) {
-        displayTitle = clean;
-        break;
+      if (clean && clean.length > 6 && clean.length < 60 && !clean.match(/^(标题|正文|配图|话题|类型|热度|角度|#|🎨)/)) {
+        displayTitle = clean; break;
       }
     }
     if (!displayTitle) displayTitle = raw.substring(0, 60) + '...';
@@ -370,8 +621,8 @@
           </div>
         </div>
         <div class="card-body">
-          <button class="copy-btn" onclick="copyCard(this, ${card.index})">📋 复制</button>
-          ${title ? `<h3>📝 标题备选</h3><div class="titles">${title.split('\n').filter(t=>t.trim()).map(t=>`<li>${t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '')}</li>`).join('')}</div>` : ''}
+          <button class="copy-btn" onclick="copyCard(this)">📋 复制</button>
+          ${title ? `<h3>📝 标题备选</h3><ul class="titles">${title.split('\n').filter(t=>t.trim()).map(t=>`<li>${t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '')}</li>`).join('')}</ul>` : ''}
           ${content ? `<h3>📄 正文框架</h3><div class="content">${content.replace(/\n/g, '<br>')}</div>` : ''}
           ${cover ? `<h3>🎨 配图建议</h3><div class="cover-box">${cover.replace(/\n/g, '<br>')}</div>` : ''}
           ${tags.length > 0 ? `<h3>🏷️ 话题标签</h3><div class="tags">${tags.map(t=>`<span>${t}</span>`).join('')}</div>` : ''}
@@ -380,64 +631,7 @@
     `;
   }
 
-  // ========== API 调用 ==========
-  async function fetchTopics(promptOverride) {
-    const inputEl = document.getElementById('topicInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const container = document.getElementById('cardsContainer');
-    const loading = document.getElementById('loadingContainer');
-    const query = promptOverride || inputEl.value.trim();
-
-    if (!query) {
-      inputEl.focus();
-      return;
-    }
-
-    sendBtn.disabled = true;
-    sendBtn.textContent = '生成中...';
-    container.innerHTML = '';
-    loading.innerHTML = `<div class="loading"><div class="spinner"></div>AI 正在搜索和生成选题...</div>`;
-
-    try {
-      const response = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${DIFY_API_KEY}`,
-        },
-        body: JSON.stringify({
-          inputs: {},
-          query: query,
-          response_mode: 'blocking',
-          user: 'xiaohongshu-editor',
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error(`API 请求失败 (${response.status})`);
-      }
-
-      const data = await response.json();
-      const answer = data.answer || '';
-
-      if (!answer) {
-        throw new Error('未获取到回复内容');
-      }
-
-      const cards = parseTopics(answer);
-      loading.innerHTML = '';
-      container.innerHTML = cards.map(c => renderCard(c)).join('');
-
-    } catch (err) {
-      loading.innerHTML = '';
-      container.innerHTML = `<div class="error">❌ ${err.message}<br><br>请检查：<br>1. API Key 是否正确<br>2. Dify 应用是否已发布<br>3. 网络是否能访问 api.dify.ai</div>`;
-    } finally {
-      sendBtn.disabled = false;
-      sendBtn.textContent = '生成选题';
-    }
-  }
-
-  function copyCard(btn, index) {
+  function copyCard(btn) {
     const card = btn.closest('.card');
     const text = card.innerText.replace('📋 复制', '');
     navigator.clipboard.writeText(text).then(() => {
@@ -446,7 +640,111 @@
     });
   }
 
-  // ========== 回车发送 ==========
+  // ========== Feed AI Modal ==========
+  function openFeedModal() {
+    document.getElementById('feedModal').classList.add('active');
+    document.getElementById('feedResult').classList.remove('active');
+    document.getElementById('feedResult').textContent = '';
+    document.getElementById('feedInput').value = '';
+    document.getElementById('feedBtn').disabled = false;
+    document.getElementById('feedBtn').textContent = '🤖 整理入库';
+  }
+
+  function closeFeedModal() {
+    document.getElementById('feedModal').classList.remove('active');
+  }
+
+  // KB select toggle
+  document.getElementById('kbSelect').addEventListener('click', (e) => {
+    if (e.target.tagName === 'LABEL') {
+      document.querySelectorAll('#kbSelect label').forEach(l => l.classList.remove('checked'));
+      e.target.classList.add('checked');
+    }
+  });
+
+  // Close modal on overlay click
+  document.getElementById('feedModal').addEventListener('click', (e) => {
+    if (e.target === e.currentTarget) closeFeedModal();
+  });
+
+  async function feedAI() {
+    const input = document.getElementById('feedInput').value.trim();
+    const feedBtn = document.getElementById('feedBtn');
+    const resultDiv = document.getElementById('feedResult');
+    const checkedKb = document.querySelector('#kbSelect label.checked');
+    const kbName = checkedKb ? checkedKb.textContent : '知识库';
+
+    if (!input) return;
+
+    feedBtn.disabled = true;
+    feedBtn.textContent = '处理中...';
+    resultDiv.classList.add('active');
+    resultDiv.textContent = '⏳ AI 正在分析内容...';
+
+    const feedPrompt = `我是一名小红书宠物博主，现在要把一些内容整理到知识库「${kbName}」。
+
+请分析以下我粘贴的内容，帮我整理成知识库文档格式（Markdown）：
+
+---
+${input}
+---
+
+## 要求
+1. 如果是博主/账号信息：提取账号名、平台、定位、内容特点，整理成对标账号格式
+2. 如果是爆款笔记：保留原文精华，标注标题结构、开头方式、引流技巧
+3. 如果是产品信息：提取品牌、品类、价格、卖点
+4. 输出完整的 Markdown 格式，方便我直接复制存入知识库`;
+
+    try {
+      const res = await fetch(DIFY_URL, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${DIFY_KEY}`,
+        },
+        body: JSON.stringify({
+          inputs: {},
+          query: feedPrompt,
+          response_mode: 'streaming',
+          user: 'feed-editor',
+        }),
+      });
+
+      if (!res.ok) throw new Error(`API ${res.status}`);
+
+      const reader = res.body.getReader();
+      const decoder = new TextDecoder();
+      let buffer = '';
+      let fullText = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+        buffer += decoder.decode(value, { stream: true });
+        const lines = buffer.split('\n');
+        buffer = lines.pop() || '';
+        for (const line of lines) {
+          if (!line.startsWith('data: ')) continue;
+          try {
+            const json = JSON.parse(line.slice(6));
+            if (json.event === 'message' && json.answer) {
+              fullText += json.answer;
+              const clean = fullText.replace(/<think>[\s\S]*?<\/think>/g, '');
+              resultDiv.textContent = clean || '处理中...';
+            }
+          } catch(e) {}
+        }
+      }
+
+    } catch (err) {
+      resultDiv.textContent = `❌ ${err.message}`;
+    } finally {
+      feedBtn.disabled = false;
+      feedBtn.textContent = '🤖 整理入库';
+    }
+  }
+
+  // ========== Keyboard ==========
   document.getElementById('topicInput').addEventListener('keydown', (e) => {
     if (e.key === 'Enter') fetchTopics();
   });
