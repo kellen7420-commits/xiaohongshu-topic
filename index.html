@@ -565,6 +565,45 @@
     .topic-card .card-top {
       padding: var(--space-5) var(--space-5) var(--space-4);
       border-bottom: 1px solid var(--border-subtle);
+      position: relative;
+    }
+
+    /* Save button on topic cards */
+    .card-save-btn {
+      position: absolute;
+      top: var(--space-3);
+      right: var(--space-3);
+      width: 30px;
+      height: 30px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: 50%;
+      color: var(--text-tertiary);
+      font-size: 15px;
+      cursor: pointer;
+      opacity: 0;
+      transition: all var(--duration-fast) var(--ease-out);
+      z-index: 2;
+      line-height: 1;
+    }
+
+    .topic-card:hover .card-save-btn { opacity: 1; }
+
+    .card-save-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+      transform: scale(1.15);
+    }
+
+    .card-save-btn.saved {
+      opacity: 1;
+      background: var(--success);
+      border-color: var(--success);
+      color: white;
     }
 
     .topic-card .card-num {
@@ -1902,7 +1941,7 @@ function renderTopicCard(card) {
 
   if (usefulContent === 0 && raw.length > 50) {
     const cleanRaw = raw.replace(/^(好[的了]|没问题|收到|明白|给[你我]|这就|马上|OK)[,，。！\s]*/, '').trim();
-    return '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(cleanRaw.substring(0, 60)) + '...</h4>' + (type ? '<div class="meta-row"><span class="badge accent">' + type + '</span></div>' : '') + '</div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制全文</button><div class="body-text">' + escapeHtml(cleanRaw) + '</div>' + (tags.length ? '<div class="section-label">🏷️ 话题标签</div><div class="tags-row">' + tags.map(function(t){return '<span class="tag">'+t+'</span>';}).join('') + '</div>' : '') + '</div></div>';
+    return '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(cleanRaw.substring(0, 60)) + '...</h4>' + (type ? '<div class="meta-row"><span class="badge accent">' + type + '</span></div>' : '') + '<button class="card-save-btn" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到备选题库">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制全文</button><div class="body-text">' + escapeHtml(cleanRaw) + '</div>' + (tags.length ? '<div class="section-label">🏷️ 话题标签</div><div class="tags-row">' + tags.map(function(t){return '<span class="tag">'+t+'</span>';}).join('') + '</div>' : '') + '</div></div>';
   }
 
   // Find display title
@@ -1916,7 +1955,7 @@ function renderTopicCard(card) {
   }
   if (!displayTitle) displayTitle = raw.substring(0, 60).replace(/\n/g, ' ') + '...';
 
-  var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制</button>';
+  var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div><button class="card-save-btn" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到备选题库">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制</button>';
 
   if (title) {
     html += '<div class="section-label">📝 标题备选</div><ul class="title-list">' + title.split('\n').filter(function(t){return t.trim();}).map(function(t){return '<li>' + escapeHtml(t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '').replace(/\*\*/g, '')) + '</li>';}).join('') + '</ul>';
@@ -2312,6 +2351,42 @@ function saveChipTopic(label) {
   showToast('已收藏到备选题库 ✅');
 }
 
+// Save a generated topic card to the library
+function saveTopicCard(btn) {
+  const card = btn.closest('.topic-card');
+  if (!card) return;
+  const cardHTML = card.outerHTML;
+  const cardText = card.innerText.trim();
+  // Use first meaningful line as title
+  const lines = cardText.split('\n').filter(l => l.trim());
+  let title = lines[0] || '选题';
+  if (title.length > 50) title = title.substring(0, 50) + '...';
+
+  const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+
+  // Check for duplicates by title
+  if (saved.some(s => s.title === title)) {
+    showToast('该选题已在备选题库中');
+    return;
+  }
+
+  saved.unshift({
+    id: Date.now().toString(),
+    time: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    title: title,
+    content: cardText.substring(0, 500),
+    tags: [],
+    cardsHTML: cardHTML
+  });
+
+  if (saved.length > MAX_SAVED) saved.length = MAX_SAVED;
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+
+  btn.classList.add('saved');
+  btn.innerHTML = '✓';
+  showToast('已收藏到备选题库 ✅');
+}
+
 function loadSavedTopics() {
   const list = document.getElementById('savedList');
   const countEl = document.getElementById('savedCount');
@@ -2372,11 +2447,22 @@ function generateFromSaved(id) {
   document.getElementById('module-topics').classList.add('active');
   document.getElementById('moduleTitle').textContent = '选题生成';
   document.getElementById('moduleDesc').textContent = '为你的宠物账号生成热门选题';
-
-  // Use the title as the search query to generate 6 new topics
-  const query = `搜索小红书和抖音近7天【${entry.title}】相关热门帖子和爆款笔记，分析标题套路、正文结构和评论区用户关注点。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签`;
-
   document.getElementById('topicInput').value = entry.title;
+
+  // If we have cached card HTML, restore it directly
+  if (entry.cardsHTML) {
+    document.getElementById('thinkingPanel').classList.remove('active');
+    document.getElementById('analysisContainer').innerHTML = '';
+    document.getElementById('cardsContainer').innerHTML = entry.cardsHTML;
+    document.getElementById('errorBanner').classList.remove('active');
+    document.getElementById('topicsEmpty').style.display = 'none';
+    updateEmptyStates('topics');
+    showToast('已还原收藏的选题 📌');
+    return;
+  }
+
+  // Otherwise, generate new topics based on the title
+  const query = `搜索小红书和抖音近7天【${entry.title}】相关热门帖子和爆款笔记，分析标题套路、正文结构和评论区用户关注点。⚠️ 必须输出正好6个选题（选题1选题2选题3选题4选题5选题6，缺一不可），每个都要：完整正文（200-350字，可直接发布）+配图建议+话题标签。禁止只给大纲！`;
   fetchTopics(query);
   showToast('正在基于收藏选题生成新内容...');
 }
