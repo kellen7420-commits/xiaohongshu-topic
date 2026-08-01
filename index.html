@@ -2159,7 +2159,7 @@ async function refreshChips() {
 
     const topicLines = answer.split('\n')
       .map(l => l.replace(/^\d+[.、.\s]+/, '').trim())
-      .filter(l => l && /\p{Extended_Pictographic}/u.test(l.charAt(0)))
+      .filter(l => l && l.length <= 30 && /\p{Emoji}/u.test(l))
       .slice(0, 19);
 
     if (topicLines.length === 0) throw new Error('未获取到话题');
