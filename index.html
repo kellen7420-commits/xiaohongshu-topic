@@ -3,720 +3,2017 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>小红书选题助手</title>
+  <title>选题助手 — 小红书内容智能体</title>
   <style>
-    * { margin: 0; padding: 0; box-sizing: border-box; }
+    /* ============================================
+       DESIGN TOKENS — 4px grid system
+       ============================================ */
+    :root {
+      /* Surfaces */
+      --bg-page: #FAFAFA;
+      --bg-surface: #FFFFFF;
+      --bg-hover: #F4F4F5;
+      --bg-active: #EFF6FF;
+
+      /* Text */
+      --text-primary: #18181B;
+      --text-secondary: #52525B;
+      --text-tertiary: #A1A1AA;
+      --text-inverse: #FFFFFF;
+
+      /* Borders */
+      --border-subtle: #E4E4E7;
+      --border-default: #D4D4D8;
+      --border-hover: #A1A1AA;
+
+      /* Accent */
+      --accent: #2563EB;
+      --accent-hover: #1D4ED8;
+      --accent-subtle: #EFF6FF;
+      --accent-ring: rgba(37, 99, 235, 0.25);
+
+      /* Status */
+      --success: #16A34A;
+      --success-subtle: #F0FDF4;
+      --warning: #D97706;
+      --warning-subtle: #FFFBEB;
+      --error: #DC2626;
+      --error-subtle: #FEF2F2;
+
+      /* Spacing (4px base) */
+      --space-1: 4px;
+      --space-2: 8px;
+      --space-3: 12px;
+      --space-4: 16px;
+      --space-5: 20px;
+      --space-6: 24px;
+      --space-8: 32px;
+      --space-10: 40px;
+      --space-12: 48px;
+
+      /* Radius */
+      --radius-sm: 6px;
+      --radius-md: 8px;
+      --radius-lg: 12px;
+      --radius-xl: 16px;
+      --radius-full: 9999px;
+
+      /* Shadows — ultra-subtle, borders-first approach */
+      --shadow-card: 0 1px 3px 0 rgba(0, 0, 0, 0.04), 0 1px 2px -1px rgba(0, 0, 0, 0.03);
+
+      /* Typography */
+      --font-sans: "SF Pro Display", "PingFang SC", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", sans-serif;
+      --font-mono: "SF Mono", "JetBrains Mono", "Cascadia Code", Consolas, monospace;
+
+      /* Transitions */
+      --ease-out: cubic-bezier(0.16, 1, 0.3, 1);
+      --duration-fast: 150ms;
+      --duration-normal: 200ms;
+      --duration-slow: 300ms;
+
+      /* Layout */
+      --sidebar-width: 236px;
+      --header-height: 49px;
+    }
+
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { margin: 0; padding: 0; box-sizing: border-box; }
+
+    html, body { height: 100%; }
+
     body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background: #fef7f0;
-      min-height: 100vh;
+      font-family: var(--font-sans);
+      font-size: 14px;
+      line-height: 1.6;
+      color: var(--text-primary);
+      background: var(--bg-page);
+      -webkit-font-smoothing: antialiased;
+      -moz-osx-font-smoothing: grayscale;
+      display: flex;
     }
 
-    /* Header */
-    .header {
-      background: linear-gradient(135deg, #ff6b35, #ff4444);
-      color: white;
-      padding: 20px 24px;
-      text-align: center;
-      box-shadow: 0 2px 12px rgba(255,107,53,0.3);
-    }
-    .header h1 { font-size: 22px; }
-    .header p { font-size: 12px; opacity: 0.85; margin-top: 2px; }
-    .header-actions {
+    /* ============================================
+       SIDEBAR
+       ============================================ */
+    .sidebar {
+      width: var(--sidebar-width);
+      min-width: var(--sidebar-width);
+      height: 100vh;
+      position: fixed;
+      top: 0;
+      left: 0;
+      background: var(--bg-surface);
+      border-right: 1px solid var(--border-subtle);
       display: flex;
-      gap: 8px;
+      flex-direction: column;
+      z-index: 10;
+      user-select: none;
+    }
+
+    .sidebar-brand {
+      height: var(--header-height);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: 0 var(--space-5);
+      border-bottom: 1px solid var(--border-subtle);
+      flex-shrink: 0;
+    }
+
+    .sidebar-brand .logo {
+      width: 28px;
+      height: 28px;
+      background: var(--accent);
+      border-radius: var(--radius-md);
+      display: flex;
+      align-items: center;
       justify-content: center;
-      margin-top: 10px;
-      flex-wrap: wrap;
-    }
-    .header-actions button {
-      background: rgba(255,255,255,0.2);
-      border: 1px solid rgba(255,255,255,0.3);
+      font-size: 16px;
       color: white;
-      border-radius: 8px;
-      padding: 6px 14px;
-      font-size: 12px;
-      cursor: pointer;
-      transition: background 0.2s;
+      flex-shrink: 0;
     }
-    .header-actions button:hover { background: rgba(255,255,255,0.35); }
-    .header-actions button.primary-btn {
-      background: white;
-      color: #ff6b35;
+
+    .sidebar-brand .name {
+      font-size: 15px;
       font-weight: 600;
-      border: none;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
     }
 
-    .container { max-width: 960px; margin: 0 auto; padding: 24px 20px; }
-
-    /* Input */
-    .input-area {
-      background: white;
-      border-radius: 16px;
-      padding: 16px 20px;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-      margin-bottom: 16px;
-      display: flex;
-      gap: 10px;
-    }
-    .input-area input {
+    .sidebar-nav {
       flex: 1;
-      border: 2px solid #eee;
-      border-radius: 12px;
-      padding: 12px 16px;
-      font-size: 14px;
-      outline: none;
-      transition: border 0.2s;
-    }
-    .input-area input:focus { border-color: #ff6b35; }
-    .input-area button {
-      background: linear-gradient(135deg, #ff6b35, #ff4444);
-      color: white;
-      border: none;
-      border-radius: 12px;
-      padding: 12px 24px;
-      font-size: 14px;
-      font-weight: 600;
-      cursor: pointer;
-      white-space: nowrap;
-      transition: opacity 0.2s;
-    }
-    .input-area button:hover:not(:disabled) { opacity: 0.9; }
-    .input-area button:disabled { opacity: 0.5; cursor: not-allowed; }
-
-    .quick-btns {
+      padding: var(--space-3) var(--space-3);
       display: flex;
-      gap: 6px;
-      flex-wrap: wrap;
-      margin-bottom: 16px;
+      flex-direction: column;
+      gap: 2px;
     }
-    .quick-btns button {
-      background: white;
-      border: 1.5px solid #ffe0d3;
-      border-radius: 20px;
-      padding: 7px 14px;
-      font-size: 12px;
-      color: #ff6b35;
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-    .quick-btns button:hover { background: #fff0ea; border-color: #ff6b35; }
 
-    /* Thinking Bubble */
-    .thinking-area {
-      background: #f8f8ff;
-      border: 1.5px solid #e0e0ff;
-      border-radius: 14px;
-      padding: 16px 20px;
-      margin-bottom: 20px;
-      display: none;
-    }
-    .thinking-area.active { display: block; }
-    .thinking-title {
-      font-size: 13px;
-      color: #666;
+    .sidebar-nav .nav-section {
+      font-size: 10px;
       font-weight: 600;
-      margin-bottom: 8px;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      padding: var(--space-3) var(--space-3) var(--space-2);
+      margin-top: var(--space-2);
+    }
+
+    .sidebar-nav .nav-section:first-child { margin-top: 0; }
+
+    .nav-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      padding: var(--space-2) var(--space-3);
+      border-radius: var(--radius-md);
+      font-size: 13.5px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+      position: relative;
+      text-decoration: none;
+      height: 34px;
+    }
+
+    .nav-item:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .nav-item.active {
+      background: var(--accent-subtle);
+      color: var(--accent);
+      font-weight: 600;
+    }
+
+    .nav-item.active::before {
+      content: '';
+      position: absolute;
+      left: 0;
+      top: 6px;
+      bottom: 6px;
+      width: 3px;
+      background: var(--accent);
+      border-radius: 0 3px 3px 0;
+    }
+
+    .nav-item .icon {
+      width: 20px;
+      text-align: center;
+      font-size: 15px;
+      flex-shrink: 0;
+      opacity: 0.85;
+    }
+
+    .nav-item.active .icon { opacity: 1; }
+
+    .sidebar-footer {
+      padding: var(--space-3);
+      border-top: 1px solid var(--border-subtle);
+    }
+
+    .status-dot {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      padding: var(--space-2) var(--space-3);
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+    }
+
+    .status-dot::before {
+      content: '';
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
+      flex-shrink: 0;
+    }
+
+    .status-dot.offline::before { background: var(--border-default); }
+
+    /* ============================================
+       MAIN AREA
+       ============================================ */
+    .main {
+      margin-left: var(--sidebar-width);
+      flex: 1;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .topbar {
+      height: var(--header-height);
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 0 var(--space-8);
+      position: sticky;
+      top: 0;
+      z-index: 5;
+    }
+
+    .topbar-left h2 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      letter-spacing: -0.01em;
+    }
+
+    .topbar-left .desc {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      margin-left: var(--space-3);
+    }
+
+    .topbar-right {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+    }
+
+    .topbar-right .api-status {
       display: flex;
       align-items: center;
       gap: 6px;
+      font-size: 11.5px;
+      color: var(--text-tertiary);
+      background: var(--bg-hover);
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
     }
-    .thinking-title .dot { animation: pulse 1.4s infinite; }
-    .thinking-title .dot:nth-child(2) { animation-delay: 0.2s; }
-    .thinking-title .dot:nth-child(3) { animation-delay: 0.4s; }
-    @keyframes pulse {
-      0%, 100% { opacity: 0.3; }
-      50% { opacity: 1; }
+
+    .topbar-right .api-status .dot {
+      width: 6px;
+      height: 6px;
+      border-radius: 50%;
+      background: var(--success);
     }
-    .thinking-content {
-      font-size: 13px;
-      color: #555;
+
+    .topbar-right .api-status .dot.off { background: var(--border-default); }
+
+    .content {
+      flex: 1;
+      padding: var(--space-8);
+      width: 100%;
+    }
+
+    .module { display: none; }
+    .module.active { display: block; animation: fadeIn var(--duration-slow) var(--ease-out); }
+
+    @keyframes fadeIn {
+      from { opacity: 0; transform: translateY(4px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    /* ============================================
+       CARDS
+       ============================================ */
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+    }
+
+    .card-header {
+      padding: var(--space-5) var(--space-6);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .card-header h3 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-body {
+      padding: var(--space-6);
+    }
+
+    .card + .card { margin-top: var(--space-6); }
+
+    /* ============================================
+       FORM ELEMENTS
+       ============================================ */
+    .input-group {
+      display: flex;
+      gap: var(--space-3);
+      max-width: 680px;
+      margin: 0 auto;
+    }
+
+    .input-group input,
+    .input-group textarea {
+      flex: 1;
+    }
+
+    .input {
+      width: 100%;
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: 10px 14px;
+      font-size: 14px;
+      font-family: var(--font-sans);
+      color: var(--text-primary);
+      background: var(--bg-surface);
+      outline: none;
+      transition: border var(--duration-fast) var(--ease-out), box-shadow var(--duration-fast) var(--ease-out);
+      line-height: 1.5;
+    }
+
+    .input::placeholder { color: var(--text-tertiary); }
+
+    .input:focus {
+      border-color: var(--accent);
+      box-shadow: 0 0 0 3px var(--accent-ring);
+    }
+
+    textarea.input {
+      resize: vertical;
+      min-height: 120px;
+    }
+
+    .btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--space-2);
+      padding: 9px 18px;
+      font-size: 13.5px;
+      font-weight: 600;
+      font-family: var(--font-sans);
+      border: none;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+      white-space: nowrap;
+      letter-spacing: -0.01em;
+      line-height: 1.4;
+    }
+
+    .btn:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+      pointer-events: none;
+    }
+
+    .btn-primary {
+      background: var(--accent);
+      color: var(--text-inverse);
+    }
+
+    .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
+
+    .btn-secondary {
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-subtle);
+    }
+
+    .btn-secondary:hover:not(:disabled) {
+      background: var(--bg-hover);
+      border-color: var(--border-default);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+    }
+
+    .btn-ghost:hover:not(:disabled) { background: var(--bg-hover); }
+
+    .btn-sm {
+      padding: 5px 12px;
+      font-size: 12px;
+      border-radius: var(--radius-sm);
+    }
+
+    .btn-xs {
+      padding: 3px 8px;
+      font-size: 11px;
+      border-radius: var(--radius-sm);
+    }
+
+    /* ============================================
+       QUICK CHIPS
+       ============================================ */
+    .chips-row {
+      margin-top: var(--space-5);
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-2);
+      align-items: center;
+    }
+
+    .chips-subrow {
+      display: flex;
+      gap: var(--space-2);
+      flex-wrap: wrap;
+      justify-content: center;
+      align-items: center;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 5px;
+      padding: 8px 16px;
+      font-size: 14px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-full);
+      cursor: pointer;
+      transition: all var(--duration-fast) var(--ease-out);
+      white-space: nowrap;
+      line-height: 1.4;
+      position: relative;
+    }
+
+    .chip:hover {
+      border-color: var(--accent);
+      color: var(--accent);
+      background: var(--accent-subtle);
+      padding-right: 34px;
+    }
+
+    /* + button inside chips */
+    .chip-save-btn {
+      position: absolute;
+      right: 6px;
+      top: 50%;
+      transform: translateY(-50%);
+      width: 22px;
+      height: 22px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-surface);
+      border: 1.5px solid var(--border-subtle);
+      border-radius: 50%;
+      color: var(--text-tertiary);
+      font-size: 16px;
+      font-weight: 500;
+      cursor: pointer;
+      opacity: 0;
+      transition: all var(--duration-fast) var(--ease-out);
+      padding: 0;
+      line-height: 1;
+      font-family: var(--font-sans);
+    }
+
+    .chip:hover .chip-save-btn { opacity: 1; }
+
+    .chip-save-btn:hover {
+      background: var(--accent);
+      border-color: var(--accent);
+      color: white;
+      transform: translateY(-50%) scale(1.1);
+    }
+
+    /* ============================================
+       RESULTS CARDS GRID
+       ============================================ */
+    .cards-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: var(--space-5);
+      margin-top: var(--space-6);
+    }
+
+    @media (max-width: 1600px) {
+      .cards-grid { grid-template-columns: repeat(2, 1fr); }
+    }
+
+    @media (max-width: 900px) {
+      .cards-grid { grid-template-columns: 1fr; }
+    }
+
+    .topic-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      overflow: hidden;
+      transition: box-shadow var(--duration-normal) var(--ease-out), border-color var(--duration-normal) var(--ease-out);
+      position: relative;
+    }
+
+    .topic-card:hover {
+      border-color: var(--border-default);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+    }
+
+    .topic-card .card-top {
+      padding: var(--space-5) var(--space-5) var(--space-4);
+      border-bottom: 1px solid var(--border-subtle);
+    }
+
+    .topic-card .card-num {
+      font-size: 10px;
+      font-weight: 700;
+      color: var(--accent);
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      margin-bottom: var(--space-2);
+    }
+
+    .topic-card .card-top h4 {
+      font-size: 17px;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.45;
+      letter-spacing: -0.01em;
+    }
+
+    .topic-card .card-top .meta-row {
+      display: flex;
+      gap: var(--space-2);
+      margin-top: var(--space-2);
+      flex-wrap: wrap;
+    }
+
+    .topic-card .card-top .badge {
+      font-size: 12px;
+      padding: 3px 10px;
+      border-radius: var(--radius-full);
+      background: var(--bg-hover);
+      color: var(--text-secondary);
+    }
+
+    .topic-card .card-top .badge.accent {
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    .topic-card .card-content {
+      padding: var(--space-5);
+    }
+
+    .topic-card .card-content .section-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-tertiary);
+      margin: var(--space-4) 0 var(--space-2);
+    }
+
+    .topic-card .card-content .section-label:first-child { margin-top: 0; }
+
+    .topic-card .card-content .title-list {
+      list-style: none;
+    }
+
+    .topic-card .card-content .title-list li {
+      padding: 7px 0;
+      font-size: 15px;
+      color: var(--text-primary);
+      border-bottom: 1px solid var(--border-subtle);
+      line-height: 1.6;
+    }
+
+    .topic-card .card-content .title-list li:last-child { border-bottom: none; }
+
+    .topic-card .card-content .body-text {
+      font-size: 15px;
+      color: var(--text-secondary);
+      line-height: 1.9;
+      white-space: pre-wrap;
+    }
+
+    .topic-card .card-content .cover-note {
+      background: var(--bg-page);
+      border: 1px dashed var(--border-default);
+      border-radius: var(--radius-md);
+      padding: var(--space-4);
+      font-size: 14px;
+      color: var(--text-secondary);
+      line-height: 1.7;
+    }
+
+    .topic-card .card-content .tags-row {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 4px;
+    }
+
+    .topic-card .card-content .tags-row .tag {
+      font-size: 12px;
+      padding: 4px 10px;
+      background: var(--accent-subtle);
+      color: var(--accent);
+      border-radius: var(--radius-full);
+      font-weight: 500;
+    }
+
+    .topic-card .copy-btn {
+      position: absolute;
+      top: var(--space-4);
+      right: var(--space-4);
+      opacity: 0;
+      transition: opacity var(--duration-fast);
+    }
+
+    .topic-card:hover .copy-btn { opacity: 1; }
+
+    /* ============================================
+       ANALYSIS PANEL (trend summary before cards)
+       ============================================ */
+    .analysis-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent-subtle);
+      border-radius: var(--radius-lg);
+      margin-bottom: var(--space-6);
+      overflow: hidden;
+    }
+
+    .analysis-panel .analysis-header {
+      padding: var(--space-4) var(--space-6);
+      background: linear-gradient(135deg, #F0F5FF, #FAFBFF);
+      border-bottom: 1px solid var(--border-subtle);
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      cursor: pointer;
+      user-select: none;
+    }
+
+    .analysis-panel .analysis-header .a-icon {
+      font-size: 20px;
+    }
+
+    .analysis-panel .analysis-header h4 {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      flex: 1;
+    }
+
+    .analysis-panel .analysis-header .toggle-arrow {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      transition: transform var(--duration-fast) var(--ease-out);
+    }
+
+    .analysis-panel.collapsed .analysis-header .toggle-arrow {
+      transform: rotate(-90deg);
+    }
+
+    .analysis-panel .analysis-body {
+      padding: var(--space-5) var(--space-6);
+      font-size: 14px;
       line-height: 1.8;
-      max-height: 400px;
+      color: var(--text-secondary);
+      max-height: 600px;
+      overflow-y: auto;
+    }
+
+    .analysis-panel.collapsed .analysis-body {
+      display: none;
+    }
+
+    .analysis-panel .analysis-body h2,
+    .analysis-panel .analysis-body h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: var(--space-4) 0 var(--space-2);
+    }
+
+    .analysis-panel .analysis-body h2:first-child,
+    .analysis-panel .analysis-body h3:first-child {
+      margin-top: 0;
+    }
+
+    .analysis-panel .analysis-body ul,
+    .analysis-panel .analysis-body ol {
+      padding-left: var(--space-5);
+      margin: var(--space-2) 0;
+    }
+
+    .analysis-panel .analysis-body li {
+      margin-bottom: var(--space-1);
+    }
+
+    .analysis-panel .analysis-body strong {
+      color: var(--text-primary);
+    }
+
+    .analysis-panel .analysis-body hr {
+      border: none;
+      border-top: 1px solid var(--border-subtle);
+      margin: var(--space-4) 0;
+    }
+
+    .analysis-panel .analysis-body code {
+      background: var(--bg-hover);
+      padding: 2px 6px;
+      border-radius: 3px;
+      font-size: 12.5px;
+      font-family: var(--font-mono);
+    }
+
+    /* ============================================
+       SAVED TOPICS LIBRARY
+       ============================================ */
+    .saved-item {
+      display: flex;
+      align-items: center;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-6);
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background var(--duration-fast) var(--ease-out);
+      position: relative;
+    }
+
+    .saved-item:last-child { border-bottom: none; }
+
+    .saved-item:hover { background: var(--bg-hover); }
+
+    .saved-item .s-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-tertiary);
+      min-width: 24px;
+      font-family: var(--font-mono);
+    }
+
+    .saved-item .s-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .saved-item .s-title {
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: 2px;
+      line-height: 1.4;
+      display: -webkit-box;
+      -webkit-line-clamp: 2;
+      -webkit-box-orient: vertical;
+      overflow: hidden;
+    }
+
+    .saved-item .s-meta {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      display: flex;
+      gap: var(--space-3);
+      align-items: center;
+    }
+
+    .saved-item .s-time {
+      font-family: var(--font-mono);
+      font-size: 11px;
+    }
+
+    .saved-item .s-tags {
+      display: flex;
+      gap: 4px;
+      flex-wrap: wrap;
+    }
+
+    .saved-item .s-tags .stag {
+      font-size: 11px;
+      padding: 2px 6px;
+      background: var(--accent-subtle);
+      color: var(--accent);
+      border-radius: var(--radius-full);
+      font-weight: 500;
+    }
+
+    .saved-item .s-delete {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+
+    .saved-item:hover .s-delete { opacity: 1; }
+
+    .saved-item .s-delete:hover {
+      background: var(--error-subtle);
+      color: var(--error);
+    }
+
+    /* ============================================
+       THINKING PANEL
+       ============================================ */
+    .thinking-panel {
+      background: var(--bg-surface);
+      border: 1px solid var(--accent);
+      border-radius: var(--radius-lg);
+      padding: var(--space-5) var(--space-6);
+      margin-top: var(--space-6);
+      display: none;
+    }
+
+    .thinking-panel.active { display: block; animation: fadeIn var(--duration-fast) var(--ease-out); }
+
+    .thinking-panel .think-header {
+      display: flex;
+      align-items: center;
+      gap: var(--space-2);
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--accent);
+      margin-bottom: var(--space-3);
+    }
+
+    .thinking-panel .think-header .pulse-dots {
+      display: flex;
+      gap: 3px;
+    }
+
+    .thinking-panel .think-header .pulse-dots span {
+      width: 5px;
+      height: 5px;
+      background: var(--accent);
+      border-radius: 50%;
+      animation: pulse 1.4s infinite;
+    }
+
+    .thinking-panel .think-header .pulse-dots span:nth-child(2) { animation-delay: 0.2s; }
+    .thinking-panel .think-header .pulse-dots span:nth-child(3) { animation-delay: 0.4s; }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 0.2; transform: scale(0.8); }
+      50% { opacity: 1; transform: scale(1); }
+    }
+
+    .thinking-panel .think-body {
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+      max-height: 420px;
       overflow-y: auto;
       white-space: pre-wrap;
       word-break: break-word;
     }
-    .thinking-content .think-block {
-      background: #f0f0ff;
-      border-left: 3px solid #aab;
-      padding: 8px 12px;
-      margin: 6px 0;
-      border-radius: 0 8px 8px 0;
+
+    .thinking-panel .think-body .think-block {
+      background: #F8F8FB;
+      border-left: 3px solid var(--border-default);
+      padding: var(--space-3) var(--space-4);
+      margin: var(--space-2) 0;
+      border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
       font-size: 12px;
-      color: #777;
+      color: var(--text-tertiary);
       font-style: italic;
     }
-    .thinking-content .answer-chunk {
-      color: #333;
+
+    .thinking-panel .think-body .answer-stream {
+      color: var(--text-primary);
     }
 
-    /* Cards Grid */
-    .cards-grid {
-      display: grid;
-      grid-template-columns: 1fr;
-      gap: 20px;
-    }
-    @media (min-width: 900px) {
-      .cards-grid { grid-template-columns: repeat(2, 1fr); }
-      .cards-grid .card:nth-child(5) { grid-column: 1 / -1; }
-    }
-    .card {
-      background: white;
-      border-radius: 16px;
-      overflow: hidden;
-      box-shadow: 0 2px 12px rgba(0,0,0,0.06);
-      border: 1px solid #f0f0f0;
-      transition: transform 0.2s, box-shadow 0.2s;
-      position: relative;
-    }
-    .card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 6px 20px rgba(0,0,0,0.1);
-    }
-    .card-header {
-      background: linear-gradient(135deg, #fff5f0, #ffede6);
-      padding: 20px;
-      border-bottom: 1px solid #ffe0d3;
-    }
-    .card-num {
-      font-size: 11px;
-      color: #ff6b35;
-      font-weight: 700;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-      margin-bottom: 4px;
-    }
-    .card-title {
-      font-size: 17px;
-      font-weight: 700;
-      color: #1a1a1a;
-      line-height: 1.4;
-    }
-    .card-meta {
-      display: flex;
-      gap: 8px;
-      margin-top: 6px;
-      font-size: 11px;
-      color: #999;
-      flex-wrap: wrap;
-    }
-    .card-meta span {
-      background: #f8f8f8;
-      padding: 2px 8px;
-      border-radius: 10px;
-    }
-    .card-body { padding: 20px; position: relative; }
-    .card-body h3 {
-      font-size: 12px;
-      color: #ff6b35;
-      margin: 14px 0 4px;
-      text-transform: uppercase;
-      letter-spacing: 1px;
-    }
-    .card-body h3:first-child { margin-top: 0; }
-    .card-body .titles {
-      list-style: none;
-      margin: 6px 0;
-    }
-    .card-body .titles li {
-      padding: 5px 0;
-      font-size: 13px;
-      color: #333;
-      border-bottom: 1px solid #f5f5f5;
-    }
-    .card-body .content {
-      font-size: 13px;
-      color: #555;
-      line-height: 1.8;
-    }
-    .card-body .tags {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 5px;
-      margin-top: 6px;
-    }
-    .card-body .tags span {
-      background: #f0f7ff;
-      color: #3b82f6;
-      padding: 3px 8px;
-      border-radius: 12px;
-      font-size: 11px;
-    }
-    .card-body .cover-box {
-      background: #fafafa;
-      border: 1px dashed #ddd;
-      border-radius: 10px;
-      padding: 12px;
-      margin-top: 6px;
-      font-size: 12px;
-      color: #777;
-      line-height: 1.7;
-    }
-    .copy-btn {
-      position: absolute;
-      top: 8px;
-      right: 8px;
-      background: rgba(255,255,255,0.9);
-      border: 1px solid #ddd;
-      border-radius: 6px;
-      padding: 3px 8px;
-      font-size: 10px;
-      cursor: pointer;
-      opacity: 0;
-      transition: opacity 0.2s;
-      z-index: 2;
-    }
-    .card-body:hover .copy-btn { opacity: 1; }
-
-    /* Modal */
+    /* ============================================
+       MODAL
+       ============================================ */
     .modal-overlay {
       display: none;
       position: fixed;
       inset: 0;
-      background: rgba(0,0,0,0.5);
+      background: rgba(0, 0, 0, 0.4);
+      backdrop-filter: blur(2px);
       z-index: 100;
       align-items: center;
       justify-content: center;
     }
+
     .modal-overlay.active { display: flex; }
+
     .modal {
-      background: white;
-      border-radius: 20px;
-      padding: 28px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-xl);
+      padding: var(--space-8);
       width: 90%;
-      max-width: 600px;
-      max-height: 80vh;
+      max-width: 560px;
+      max-height: 85vh;
       overflow-y: auto;
-      box-shadow: 0 20px 60px rgba(0,0,0,0.2);
+      box-shadow: 0 20px 60px rgba(0, 0, 0, 0.15);
     }
-    .modal h2 { font-size: 18px; margin-bottom: 8px; }
-    .modal .subtitle { font-size: 12px; color: #999; margin-bottom: 16px; }
-    .modal textarea {
-      width: 100%;
-      height: 180px;
-      border: 2px solid #eee;
-      border-radius: 12px;
-      padding: 14px;
-      font-size: 14px;
-      font-family: inherit;
-      resize: vertical;
-      outline: none;
-      transition: border 0.2s;
+
+    .modal h3 {
+      font-size: 17px;
+      font-weight: 600;
+      margin-bottom: var(--space-1);
     }
-    .modal textarea:focus { border-color: #ff6b35; }
+
+    .modal .subtitle {
+      font-size: 12.5px;
+      color: var(--text-tertiary);
+      margin-bottom: var(--space-5);
+    }
+
     .modal .btn-row {
       display: flex;
-      gap: 10px;
-      margin-top: 16px;
+      gap: var(--space-3);
+      margin-top: var(--space-5);
       justify-content: flex-end;
     }
-    .modal .btn-row button {
-      padding: 10px 20px;
-      border-radius: 10px;
-      font-size: 14px;
-      cursor: pointer;
-      border: none;
-      font-weight: 600;
-    }
-    .modal .btn-cancel {
-      background: #f0f0f0;
-      color: #666;
-    }
-    .modal .btn-submit {
-      background: linear-gradient(135deg, #ff6b35, #ff4444);
-      color: white;
-    }
-    .modal .btn-submit:disabled { opacity: 0.5; cursor: not-allowed; }
-    .modal .result {
-      margin-top: 16px;
-      background: #f8f8f8;
-      border-radius: 12px;
-      padding: 16px;
+
+    .modal .result-box {
+      margin-top: var(--space-5);
+      background: var(--bg-page);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
       font-size: 13px;
       line-height: 1.7;
       white-space: pre-wrap;
-      max-height: 300px;
+      max-height: 320px;
       overflow-y: auto;
       display: none;
     }
-    .modal .result.active { display: block; }
-    .modal .kb-select {
+
+    .modal .result-box.active { display: block; }
+
+    /* KB selector */
+    .kb-select {
       display: flex;
-      gap: 8px;
+      gap: var(--space-2);
       flex-wrap: wrap;
-      margin: 10px 0;
+      margin: var(--space-4) 0;
     }
-    .modal .kb-select label {
+
+    .kb-select .kb-opt {
       font-size: 12px;
-      padding: 4px 12px;
-      border-radius: 14px;
-      background: #f0f0f0;
+      padding: 6px 14px;
+      border-radius: var(--radius-full);
+      background: var(--bg-hover);
+      color: var(--text-secondary);
       cursor: pointer;
-      transition: all 0.2s;
+      transition: all var(--duration-fast) var(--ease-out);
+      border: 1px solid transparent;
+      font-weight: 500;
     }
-    .modal .kb-select label.checked {
-      background: #fff0ea;
-      color: #ff6b35;
+
+    .kb-select .kb-opt:hover {
+      background: var(--accent-subtle);
+      color: var(--accent);
+    }
+
+    .kb-select .kb-opt.selected {
+      background: var(--accent-subtle);
+      color: var(--accent);
+      border-color: var(--accent);
       font-weight: 600;
     }
 
-    /* Error */
-    .error {
-      background: #fff0f0;
-      color: #cc3333;
-      padding: 14px 18px;
-      border-radius: 12px;
-      margin-bottom: 16px;
-      border: 1px solid #ffcccc;
-      font-size: 13px;
+    /* ============================================
+       PRODUCT MODULE
+       ============================================ */
+    .product-form {
+      display: flex;
+      flex-direction: column;
+      gap: var(--space-5);
     }
 
-    .footer {
-      text-align: center;
-      padding: 40px;
-      color: #ccc;
+    .form-row {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--space-4);
+    }
+
+    @media (max-width: 640px) {
+      .form-row { grid-template-columns: 1fr; }
+    }
+
+    .form-field label {
+      display: block;
+      font-size: 12.5px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      margin-bottom: var(--space-2);
+    }
+
+    .form-field .hint {
       font-size: 11px;
+      color: var(--text-tertiary);
+      margin-top: var(--space-1);
+    }
+
+    .result-card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-lg);
+      box-shadow: var(--shadow-card);
+      margin-top: var(--space-6);
+      display: none;
+    }
+
+    .result-card.active { display: block; animation: fadeIn var(--duration-slow) var(--ease-out); }
+
+    /* ============================================
+       EMPTY STATE
+       ============================================ */
+    .empty-state {
+      text-align: center;
+      padding: var(--space-12) var(--space-6);
+    }
+
+    .empty-state .empty-icon {
+      font-size: 40px;
+      margin-bottom: var(--space-4);
+      opacity: 0.5;
+    }
+
+    .empty-state h4 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--space-2);
+    }
+
+    .empty-state p {
+      font-size: 13px;
+      color: var(--text-tertiary);
+      max-width: 360px;
+      margin: 0 auto;
+      line-height: 1.6;
+    }
+
+    /* ============================================
+       ERROR BANNER
+       ============================================ */
+    .error-banner {
+      background: var(--error-subtle);
+      color: var(--error);
+      padding: var(--space-4) var(--space-5);
+      border-radius: var(--radius-md);
+      border: 1px solid #FECACA;
+      font-size: 13px;
+      margin-bottom: var(--space-5);
+      display: none;
+    }
+
+    .error-banner.active { display: block; }
+
+    /* ============================================
+       SUCCESS TOAST
+       ============================================ */
+    .toast {
+      position: fixed;
+      bottom: var(--space-8);
+      right: var(--space-8);
+      background: var(--text-primary);
+      color: white;
+      padding: var(--space-3) var(--space-5);
+      border-radius: var(--radius-md);
+      font-size: 13px;
+      font-weight: 500;
+      z-index: 200;
+      opacity: 0;
+      transform: translateY(8px);
+      transition: all var(--duration-normal) var(--ease-out);
+      pointer-events: none;
+    }
+
+    .toast.show {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    /* ============================================
+       HISTORY LIST
+       ============================================ */
+    .history-item {
+      display: flex;
+      align-items: flex-start;
+      gap: var(--space-4);
+      padding: var(--space-4) var(--space-6);
+      border-bottom: 1px solid var(--border-subtle);
+      cursor: pointer;
+      transition: background var(--duration-fast) var(--ease-out);
+    }
+
+    .history-item:last-child { border-bottom: none; }
+
+    .history-item:hover { background: var(--bg-hover); }
+
+    .history-item .h-time {
+      font-size: 11px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+      padding-top: 2px;
+      min-width: 80px;
+      font-family: var(--font-mono);
+    }
+
+    .history-item .h-body {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .history-item .h-query {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      margin-bottom: 2px;
+    }
+
+    .history-item .h-preview {
+      font-size: 12px;
+      color: var(--text-tertiary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .history-item .h-delete {
+      flex-shrink: 0;
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border: none;
+      background: transparent;
+      color: var(--text-tertiary);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      font-size: 14px;
+      opacity: 0;
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+
+    .history-item:hover .h-delete { opacity: 1; }
+
+    .history-item .h-delete:hover {
+      background: var(--error-subtle);
+      color: var(--error);
+    }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 768px) {
+      .sidebar {
+        width: 56px;
+        min-width: 56px;
+      }
+
+      .sidebar-brand .name,
+      .nav-item span:not(.icon),
+      .nav-section,
+      .sidebar-footer .status-dot { display: none; }
+
+      .nav-item { justify-content: center; padding: var(--space-2); }
+
+      .main { margin-left: 56px; }
+
+      .topbar { padding: 0 var(--space-4); }
+
+      .content { padding: var(--space-4); }
+
+      .cards-grid { grid-template-columns: 1fr; }
     }
   </style>
 </head>
 <body>
 
-<div class="header">
-  <h1>🐾 小红书选题助手</h1>
-  <p>宠物赛道 · 大牌正品经销商 · 每日选题面板</p>
-  <div class="header-actions">
-    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 今日热门</button>
-    <button class="primary-btn" onclick="openFeedModal()">🥣 喂饭给AI</button>
-    <button onclick="document.querySelector('.input-area input').focus()">💬 自定义</button>
+<!-- ============================================
+     SIDEBAR
+     ============================================ -->
+<aside class="sidebar">
+  <div class="sidebar-brand">
+    <div class="logo">🐾</div>
+    <span class="name">选题助手</span>
   </div>
-</div>
-
-<div class="container">
-  <div class="input-area">
-    <input type="text" id="topicInput" placeholder="输入选题需求，如：最近猫咪夏天喝水少怎么选题？" />
-    <button id="sendBtn" onclick="fetchTopics()">生成选题</button>
-  </div>
-
-  <div class="quick-btns">
-    <button onclick="fetchTopics('帮我看看最近宠物圈有什么热门话题，推荐5个图文选题')">🔥 热门话题</button>
-    <button onclick="fetchTopics('夏天猫咪相关的热门话题，推荐5个选题')">☀️ 夏季猫咪</button>
-    <button onclick="fetchTopics('夏天狗狗相关的热门话题，推荐5个选题')">🐶 夏季狗狗</button>
-    <button onclick="fetchTopics('宠物粮省钱平价相关的热门话题，推荐5个选题')">💰 省钱平替</button>
-    <button onclick="fetchTopics('大牌猫粮狗粮渠道好价相关选题，推荐5个')">🏷️ 大牌好价</button>
-  </div>
-
-  <!-- Thinking Bubble -->
-  <div class="thinking-area" id="thinkingArea">
-    <div class="thinking-title">
-      💭 AI 正在思考 <span class="dot">●</span><span class="dot">●</span><span class="dot">●</span>
+  <nav class="sidebar-nav">
+    <div class="nav-section">工作台</div>
+    <div class="nav-item active" data-module="topics">
+      <span class="icon">📊</span> <span>选题生成</span>
     </div>
-    <div class="thinking-content" id="thinkingContent"></div>
-  </div>
-
-  <div id="cardsContainer"></div>
-</div>
-
-<div class="footer">大牌正品 · 渠道好价 · Powered by Dify + DeepSeek</div>
-
-<!-- Feed AI Modal -->
-<div class="modal-overlay" id="feedModal">
-  <div class="modal">
-    <h2>🥣 喂饭给AI</h2>
-    <p class="subtitle">发现好的帖子或博主？直接贴过来，AI 帮你整理到知识库</p>
-
-    <div class="kb-select" id="kbSelect">
-      <label data-kb="kb-2-产品库">📦 产品库</label>
-      <label data-kb="kb-3-对标账号" class="checked">🎯 对标账号</label>
-      <label data-kb="kb-4-爆款笔记风格样本">📝 风格样本</label>
-      <label data-kb="kb-1-博主人设">👤 博主人设</label>
+    <div class="nav-item" data-module="product">
+      <span class="icon">📦</span> <span>卖货贴</span>
     </div>
+    <div class="nav-item" data-module="feed">
+      <span class="icon">🥣</span> <span>喂饭给 AI</span>
+    </div>
+    <div class="nav-section">数据</div>
+    <div class="nav-item" data-module="history">
+      <span class="icon">📋</span> <span>历史记录</span>
+    </div>
+    <div class="nav-item" data-module="saved">
+      <span class="icon">📌</span> <span>备选题库</span>
+    </div>
+  </nav>
+  <div class="sidebar-footer">
+    <div class="status-dot" id="sidebarStatus">Dify 已连接</div>
+  </div>
+</aside>
 
-    <textarea id="feedInput" placeholder="粘贴这里：
-- 小红书/抖音帖子链接 + 你想提取的内容
-- 博主主页链接 + 几句话描述为什么关注ta
-- 一篇你觉得写得很好的笔记原文
-- 或者直接描述你想让AI记住什么..."></textarea>
-
-    <div class="result" id="feedResult"></div>
-
-    <div class="btn-row">
-      <button class="btn-cancel" onclick="closeFeedModal()">取消</button>
-      <button class="btn-submit" id="feedBtn" onclick="feedAI()">🤖 整理入库</button>
+<!-- ============================================
+     MAIN AREA
+     ============================================ -->
+<div class="main">
+  <!-- Topbar -->
+  <div class="topbar">
+    <div class="topbar-left">
+      <h2 id="moduleTitle">选题生成</h2>
+      <span class="desc" id="moduleDesc">为你的宠物账号生成热门选题</span>
+    </div>
+    <div class="topbar-right">
+      <div class="api-status">
+        <span class="dot" id="statusDot"></span>
+        <span id="statusText">Dify API</span>
+      </div>
     </div>
   </div>
-</div>
 
-<script>
-  // ========== Config ==========
-  const PROXY_URL = '/api/chat';  // Vercel 流式代理，防超时 + 防墙
+  <!-- Content -->
+  <div class="content">
 
-  // ========== Streaming Fetch ==========
-  async function fetchTopics(promptOverride) {
-    const inputEl = document.getElementById('topicInput');
-    const sendBtn = document.getElementById('sendBtn');
-    const container = document.getElementById('cardsContainer');
-    const thinkArea = document.getElementById('thinkingArea');
-    const thinkContent = document.getElementById('thinkingContent');
-    const query = promptOverride || inputEl.value.trim();
-
-    if (!query) { inputEl.focus(); return; }
-
-    sendBtn.disabled = true;
-    sendBtn.textContent = '思考中...';
-    container.innerHTML = '';
-    thinkArea.classList.add('active');
-    thinkContent.innerHTML = '<span style="color:#999">🔍 正在搜索和分析中...</span>';
-
-    let fullAnswer = '';
-    let answerStarted = false;
-
-    try {
-      const res = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: query }),
-      });
-
-      if (!res.ok) {
-        const errText = await res.text();
-        throw new Error(`API ${res.status}: ${errText.substring(0,200)}`);
-      }
-
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const json = JSON.parse(line.slice(6));
-            if (json.event === 'message' && json.answer) {
-              if (!answerStarted) {
-                thinkContent.innerHTML = '';
-                answerStarted = true;
-              }
-              fullAnswer += json.answer;
-              // Live display: show everything, highlight thinking
-              const display = formatLiveDisplay(fullAnswer);
-              thinkContent.innerHTML = display;
-              thinkContent.scrollTop = thinkContent.scrollHeight;
-            }
-            if (json.event === 'message_end') break;
-          } catch(e) {}
-        }
-      }
-
-      thinkContent.innerHTML += '<div style="margin-top:12px;color:#4caf50;font-weight:600">✅ 生成完成！渲染中...</div>';
-
-      // Clean answer: strip  tags and <think> tags
-      const cleanAnswer = fullAnswer
-        .replace(/<think>[\s\S]*?<\/think>/g, '')
-        .replace(/[\s\S]*?<\/think>/g, '')
-        .trim();
-
-      const cards = parseTopics(cleanAnswer);
-
-      thinkArea.classList.remove('active');
-
-      if (cards.length === 0) {
-        // Fallback: show entire answer in one card
-        container.innerHTML = renderSingleCard(cleanAnswer);
-      } else {
-        container.innerHTML = cards.map(c => renderCard(c)).join('');
-      }
-
-    } catch (err) {
-      thinkArea.classList.remove('active');
-      container.innerHTML = `<div class="error">❌ ${err.message}</div>`;
-    } finally {
-      sendBtn.disabled = false;
-      sendBtn.textContent = '生成选题';
-    }
-  }
-
-  function formatLiveDisplay(text) {
-    // Highlight thinking sections
-    let display = text;
-    display = display.replace(/<think>([\s\S]*?)<\/think>/g,
-      (m, c) => `<div class="think-block">💭 思考过程：${escapeHtml(c.trim().substring(0,300))}...</div>`);
-    // Show answer portion (strip tags, keep text)
-    const answer = display.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/[\s\S]*?<\/think>/g, '');
-    const thinking = display.match(/<div class="think-block">[\s\S]*?<\/div>/g);
-    let result = '';
-    if (thinking) result += thinking.join('');
-    if (answer.trim()) result += '<div class="answer-chunk" style="margin-top:8px">' + escapeHtml(answer.trim()).replace(/\n/g, '<br>') + '</div>';
-    return result || escapeHtml(display).replace(/\n/g, '<br>');
-  }
-
-  function escapeHtml(s) {
-    const d = document.createElement('div');
-    d.textContent = s;
-    return d.innerHTML;
-  }
-
-  function renderSingleCard(text) {
-    return `<div class="card"><div class="card-header"><div class="card-num">生成结果</div></div><div class="card-body"><div class="content" style="white-space:pre-wrap">${escapeHtml(text)}</div></div></div>`;
-  }
-
-  // ========== Parse Topics ==========
-  function parseTopics(text) {
-    const cards = [];
-    // Try matching "选题N：..." pattern
-    const titles = text.match(/选题\s*\d+[：:].*?(?=选题\s*\d|$)/gs);
-    if (titles && titles.length > 0) {
-      titles.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
-      return cards;
-    }
-    // Try splitting on "### 选题" or numbered markers
-    const markers = text.match(/###?\s*选题\s*\d+/g);
-    if (markers && markers.length > 0) {
-      const parts = text.split(/###?\s*选题\s*\d+/).filter(s => s.trim());
-      parts.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
-      return cards;
-    }
-    // Single result: wrap full text
-    cards.push({ index: 1, raw: text, isSingle: true });
-    return cards;
-  }
-
-  function extractField(text, field) {
-    const patterns = {
-      title: /(?:标题备选|标题)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:正文|配图|话题|类型|封面|#|标签)|$)/i,
-      content: /(?:正文框架|正文|完整正文)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:配图|话题|类型|封面|#|标签)|$)/i,
-      cover: /(?:配图建议|封面建议|封面怎么做|封面)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:话题|类型|#|标签)|$)/i,
-      type: /类型[：:]\s*(.+?)(?=\n|$)/i,
-      heat: /(?:热度|话题热度)[：:]\s*(.+?)(?=\n|$)/i,
-    };
-    const m = text.match(patterns[field]);
-    return m ? m[1].trim() : '';
-  }
-
-  function extractTags(text) {
-    const tags = text.match(/#[\w一-鿿]+/g) || [];
-    return [...new Set(tags)];
-  }
-
-  function renderCard(card) {
-    const raw = card.raw;
-    const title = extractField(raw, 'title') || '';
-    const content = extractField(raw, 'content') || '';
-    const cover = extractField(raw, 'cover') || '';
-    const tags = extractTags(raw);
-    const type = extractField(raw, 'type') || '';
-    const heat = extractField(raw, 'heat') || '';
-
-    // If nothing useful was extracted, fall back to showing full raw text
-    const usefulContent = [title, content].filter(s => s.length > 20).length;
-    if (usefulContent === 0 && raw.length > 50) {
-      // Strip common opening phrases
-      const cleanRaw = raw.replace(/^(好[的了]|没问题|收到|明白|给[你我]|这就|马上|OK)[,，。！\s]*/, '').trim();
-      return `
-        <div class="card">
-          <div class="card-header">
-            <div class="card-num">${card.isSingle ? '生成结果' : '选题 #'+card.index}</div>
-            <div class="card-title" style="font-size:15px">${cleanRaw.substring(0,50)}...</div>
-            ${type ? `<div class="card-meta"><span>${type}</span></div>` : ''}
-          </div>
-          <div class="card-body">
-            <button class="copy-btn" onclick="copyCard(this)">📋 复制全文</button>
-            <div class="content" style="white-space:pre-wrap">${escapeHtml(cleanRaw)}</div>
-            ${tags.length > 0 ? `<h3>🏷️ 话题标签</h3><div class="tags">${tags.map(t=>`<span>${t}</span>`).join('')}</div>` : ''}
-          </div>
-        </div>`;
-    }
-
-    // Normal card with extracted fields
-    let displayTitle = '';
-    const lines = raw.split('\n');
-    for (const line of lines) {
-      const clean = line.replace(/[*-]/g, '').trim();
-      if (clean && clean.length > 10 && clean.length < 80 && !clean.match(/^(标题|正文|配图|话题|类型|热度|角度|#|🎨|📝|📄|🏷️|好[的了]|没问题)/)) {
-        displayTitle = clean; break;
-      }
-    }
-    if (!displayTitle) displayTitle = raw.substring(0, 60).replace(/\n/g, ' ') + '...';
-
-    return `
+    <!-- ============================================
+         MODULE 1: 选题生成
+         ============================================ -->
+    <div class="module active" id="module-topics">
       <div class="card">
-        <div class="card-header">
-          <div class="card-num">${card.isSingle ? '生成结果' : '选题 #'+card.index}</div>
-          <div class="card-title">${displayTitle}</div>
-          <div class="card-meta">
-            ${heat ? `<span>${heat}</span>` : ''}
-            ${type ? `<span>${type}</span>` : ''}
-          </div>
-        </div>
         <div class="card-body">
-          <button class="copy-btn" onclick="copyCard(this)">📋 复制</button>
-          ${title ? `<h3>📝 标题备选</h3><ul class="titles">${title.split('\n').filter(t=>t.trim()).map(t=>`<li>${t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '')}</li>`).join('')}</ul>` : ''}
-          ${content ? `<h3>📄 正文</h3><div class="content">${content.replace(/\n/g, '<br>')}</div>` : ''}
-          ${cover ? `<h3>🎨 配图建议</h3><div class="cover-box">${cover.replace(/\n/g, '<br>')}</div>` : ''}
-          ${tags.length > 0 ? `<h3>🏷️ 话题标签</h3><div class="tags">${tags.map(t=>`<span>${t}</span>`).join('')}</div>` : ''}
+          <div class="input-group">
+            <input type="text" class="input" id="topicInput"
+                   placeholder="输入选题需求，如：最近猫咪夏天喝水少怎么选题？" />
+            <button class="btn btn-primary" id="sendBtn" onclick="fetchTopics()">生成选题</button>
+          </div>
+          <div class="chips-row" id="chipsRow">
+            <div class="chips-subrow">
+              <span class="chip fixed" data-label="🔥 今日热门话题" data-query="搜索小红书和抖音近7天宠物赛道最火的话题和帖子，分析爆款规律。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签。不要只给1个！">🔥 今日热门话题<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+              <span class="chip" data-label="☀️ 夏季猫咪" data-query="搜索小红书和抖音近7天夏天猫咪热门话题，分析爆款笔记的标题套路和内容结构。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">☀️ 夏季猫咪<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+              <span class="chip" data-label="🐶 夏季狗狗" data-query="搜索小红书和抖音近7天夏天狗狗热门话题，分析爆款笔记套路。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">🐶 夏季狗狗<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+              <span class="chip" data-label="💰 省钱平替" data-query="搜索小红书近7天猫粮狗粮省钱平替热门话题，分析爆款笔记的写法和评论区用户关注点。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">💰 省钱平替<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+              <span class="chip" data-label="🏷️ 大牌好价" data-query="搜索小红书近7天大牌猫粮狗粮渠道好价相关热门话题和竞品笔记，分析种草文案套路。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签">🏷️ 大牌好价<button class="chip-save-btn" title="收藏到备选题库">+</button></span>
+              <button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题">🔄 换一批</button>
+            </div>
+          </div>
         </div>
       </div>
-    `;
-  }
 
-  function copyCard(btn) {
-    const card = btn.closest('.card');
-    const text = card.innerText.replace('📋 复制', '');
-    navigator.clipboard.writeText(text).then(() => {
-      btn.textContent = '✅ 已复制';
-      setTimeout(() => btn.textContent = '📋 复制', 1500);
-    });
-  }
+      <!-- Thinking Panel -->
+      <div class="thinking-panel" id="thinkingPanel">
+        <div class="think-header">
+          AI 正在思考
+          <span class="pulse-dots"><span></span><span></span><span></span></span>
+        </div>
+        <div class="think-body" id="thinkingContent"></div>
+      </div>
 
-  // ========== Feed AI Modal ==========
-  function openFeedModal() {
-    document.getElementById('feedModal').classList.add('active');
-    document.getElementById('feedResult').classList.remove('active');
-    document.getElementById('feedResult').textContent = '';
-    document.getElementById('feedInput').value = '';
-    document.getElementById('feedBtn').disabled = false;
-    document.getElementById('feedBtn').textContent = '🤖 整理入库';
-  }
+      <!-- Error -->
+      <div class="error-banner" id="errorBanner"></div>
 
-  function closeFeedModal() {
-    document.getElementById('feedModal').classList.remove('active');
-  }
+      <!-- Analysis Panel (trend summary) -->
+      <div id="analysisContainer"></div>
 
-  // KB select toggle
-  document.getElementById('kbSelect').addEventListener('click', (e) => {
-    if (e.target.tagName === 'LABEL') {
-      document.querySelectorAll('#kbSelect label').forEach(l => l.classList.remove('checked'));
-      e.target.classList.add('checked');
+      <!-- Results -->
+      <div class="cards-grid" id="cardsContainer"></div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="topicsEmpty">
+        <div class="empty-icon">💡</div>
+        <h4>开始生成选题</h4>
+        <p>输入你的需求或点击上方快捷话题，AI 将为你生成 5 个可发布的小红书图文选题</p>
+      </div>
+    </div>
+
+    <!-- ============================================
+         MODULE 2: 卖货贴
+         ============================================ -->
+    <div class="module" id="module-product">
+      <div class="card">
+        <div class="card-header">
+          <h3>📦 产品信息</h3>
+        </div>
+        <div class="card-body">
+          <div class="product-form">
+            <div class="form-field">
+              <label>产品名称 <span style="color:var(--text-tertiary);font-weight:400">（必填）</span></label>
+              <input type="text" class="input" id="prodName"
+                     placeholder="如：皇家室内成猫粮 2kg" />
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>品牌</label>
+                <input type="text" class="input" id="prodBrand"
+                       placeholder="如：皇家" />
+              </div>
+              <div class="form-field">
+                <label>品类</label>
+                <input type="text" class="input" id="prodCategory"
+                       placeholder="如：猫粮 / 狗零食 / 冻干" />
+              </div>
+            </div>
+            <div class="form-row">
+              <div class="form-field">
+                <label>官方旗舰店价格</label>
+                <input type="text" class="input" id="prodOfficialPrice"
+                       placeholder="如：¥138" />
+              </div>
+              <div class="form-field">
+                <label>你的渠道价格</label>
+                <input type="text" class="input" id="prodChannelPrice"
+                       placeholder="如：¥69（4-6折）" />
+              </div>
+            </div>
+            <div class="form-field">
+              <label>核心卖点</label>
+              <input type="text" class="input" id="prodSellingPoints"
+                     placeholder="如：同款正品、渠道直供、现货秒发、防伪可查" />
+              <span class="hint">多个卖点用逗号分隔</span>
+            </div>
+            <div style="display:flex;gap:var(--space-3);align-items:center;">
+              <button class="btn btn-primary" id="prodBtn" onclick="generateProductPost()">
+                ✨ 生成卖货贴
+              </button>
+              <span style="font-size:12px;color:var(--text-tertiary)">AI 将生成完整可发布的小红书笔记</span>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Error -->
+      <div class="error-banner" id="prodErrorBanner"></div>
+
+      <!-- Thinking -->
+      <div class="thinking-panel" id="prodThinkingPanel">
+        <div class="think-header">
+          AI 正在创作
+          <span class="pulse-dots"><span></span><span></span><span></span></span>
+        </div>
+        <div class="think-body" id="prodThinkingContent"></div>
+      </div>
+
+      <!-- Result Card -->
+      <div class="result-card" id="prodResultCard">
+        <div class="card-header">
+          <h3>📝 生成结果</h3>
+          <button class="btn btn-secondary btn-sm" onclick="copyProdResult()">📋 复制全文</button>
+        </div>
+        <div class="card-body">
+          <div id="prodResultContent" style="font-size:14px;line-height:1.8;white-space:pre-wrap;"></div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="productEmpty">
+        <div class="empty-icon">🛍️</div>
+        <h4>生成产品种草笔记</h4>
+        <p>填写产品信息，AI 将生成紧扣"大牌低价"优势的小红书图文笔记，可直接复制发布</p>
+      </div>
+    </div>
+
+    <!-- ============================================
+         MODULE 3: 喂饭给 AI
+         ============================================ -->
+    <div class="module" id="module-feed">
+      <div class="card">
+        <div class="card-header">
+          <h3>🥣 投喂知识</h3>
+        </div>
+        <div class="card-body">
+          <div class="form-field" style="margin-bottom:var(--space-4);">
+            <label>选择目标知识库</label>
+            <div class="kb-select" id="kbSelect">
+              <span class="kb-opt selected" data-kb="kb-3-对标账号">🎯 对标账号</span>
+              <span class="kb-opt" data-kb="kb-4-爆款笔记风格样本">📝 风格样本</span>
+              <span class="kb-opt" data-kb="kb-2-产品库">📦 产品库</span>
+              <span class="kb-opt" data-kb="kb-1-博主人设">👤 博主人设</span>
+            </div>
+          </div>
+          <div class="form-field" style="margin-bottom:var(--space-4);">
+            <label>粘贴内容</label>
+            <textarea class="input" id="feedInput" style="min-height:180px;"
+                      placeholder="粘贴这里：&#10;- 小红书/抖音帖子链接 + 你想提取的内容&#10;- 博主主页链接 + 几句话描述为什么关注ta&#10;- 一篇你觉得写得很好的笔记原文&#10;- 或者直接描述你想让AI记住什么..."></textarea>
+          </div>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <button class="btn btn-primary" id="feedBtn" onclick="feedAI()">🤖 整理入库</button>
+            <span style="font-size:12px;color:var(--text-tertiary)">AI 将分析内容并整理为知识库格式</span>
+          </div>
+
+          <!-- Feed Result -->
+          <div class="result-box" id="feedResult"></div>
+        </div>
+      </div>
+
+      <!-- Empty State -->
+      <div class="empty-state" id="feedEmpty">
+        <div class="empty-icon">📚</div>
+        <h4>让 AI 更懂你的账号</h4>
+        <p>把好的帖子、对标博主、产品信息投喂给 AI，它会持续学习你的风格和产品，生成更精准的内容</p>
+      </div>
+    </div>
+
+    <!-- ============================================
+         MODULE 4: 备选题库
+         ============================================ -->
+    <div class="module" id="module-saved">
+      <div class="card">
+        <div class="card-header">
+          <h3>📌 备选题库</h3>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <span style="font-size:12px;color:var(--text-tertiary)" id="savedCount">共 0 条</span>
+            <button class="btn btn-ghost btn-sm" onclick="clearSavedTopics()" id="clearSavedBtn" style="display:none">🗑️ 清空全部</button>
+          </div>
+        </div>
+        <div class="card-body" id="savedList" style="padding:0;">
+          <div class="empty-state" id="savedEmpty">
+            <div class="empty-icon">📌</div>
+            <h4>暂无收藏的选题</h4>
+            <p>在选题生成的卡片上，鼠标悬停后点击右上角的 + 号，即可将选题收藏到这里。点击收藏的选题可以直接生成新的6篇相关笔记。</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         MODULE 5: 历史记录
+         ============================================ -->
+    <div class="module" id="module-history">
+      <div class="card">
+        <div class="card-header">
+          <h3>📋 选题生成历史</h3>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <span style="font-size:12px;color:var(--text-tertiary)" id="historyCount">共 0 条</span>
+            <button class="btn btn-ghost btn-sm" onclick="clearHistory()" id="clearHistoryBtn" style="display:none">🗑️ 清空全部</button>
+          </div>
+        </div>
+        <div class="card-body" id="historyList" style="padding:0;">
+          <div class="empty-state" id="historyEmpty">
+            <div class="empty-icon">📋</div>
+            <h4>暂无历史记录</h4>
+            <p>生成的选题会自动保存在这里，方便随时翻阅</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script>
+// ============================================
+// NAVIGATION
+// ============================================
+const moduleMap = {
+  topics:  { title: '选题生成', desc: '为你的宠物账号生成热门选题', empty: 'topicsEmpty' },
+  product: { title: '卖货贴', desc: '输入产品信息，生成种草笔记', empty: 'productEmpty' },
+  feed:    { title: '喂饭给 AI', desc: '投喂内容，让 AI 更懂你的账号', empty: 'feedEmpty' },
+  saved:   { title: '备选题库', desc: '收藏的好选题，随时拿出来用', empty: 'savedEmpty' },
+  history: { title: '历史记录', desc: '查看和回顾之前生成过的选题', empty: 'historyEmpty' }
+};
+
+document.querySelectorAll('.nav-item').forEach(item => {
+  item.addEventListener('click', () => {
+    const module = item.dataset.module;
+    // Update nav
+    document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+    item.classList.add('active');
+    // Update module
+    document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+    document.getElementById('module-' + module).classList.add('active');
+    // Update topbar
+    document.getElementById('moduleTitle').textContent = moduleMap[module].title;
+    document.getElementById('moduleDesc').textContent = moduleMap[module].desc;
+    // Reset empty states visibility
+    updateEmptyStates(module);
+    // Load history when switching to history tab
+    if (module === 'history') loadHistory();
+    if (module === 'saved') loadSavedTopics();
+  });
+});
+
+function updateEmptyStates(module) {
+  const topicsEmpty = document.getElementById('topicsEmpty');
+  const productEmpty = document.getElementById('productEmpty');
+  const feedEmpty = document.getElementById('feedEmpty');
+
+  if (module === 'topics') {
+    topicsEmpty.style.display = document.getElementById('cardsContainer').children.length === 0 ? '' : 'none';
+  }
+  if (module === 'product') {
+    productEmpty.style.display = document.getElementById('prodResultCard').classList.contains('active') ? 'none' : '';
+  }
+  if (module === 'feed') {
+    feedEmpty.style.display = 'block'; // always show for feed
+  }
+  if (module === 'saved') {
+    loadSavedTopics();
+  }
+}
+
+// ============================================
+// CONFIG
+// ============================================
+const PROXY_URL = '/api/chat';
+const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
+const DIFY_API_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
+
+// Smart fetch: auto-detect environment
+// Returns the full answer text directly (uses blocking mode for reliability)
+async function difyFetch(query) {
+  const body = JSON.stringify({
+    inputs: {},
+    query: query,
+    response_mode: 'blocking',
+    user: 'local-user',
+  });
+
+  const doCall = async (url, useAuth) => {
+    const headers = { 'Content-Type': 'application/json' };
+    if (useAuth) headers['Authorization'] = 'Bearer ' + DIFY_API_KEY;
+    const res = await fetch(url, { method: 'POST', headers, body });
+    if (!res.ok) {
+      const t = await res.text();
+      throw new Error('API ' + res.status + ': ' + t.substring(0, 200));
     }
-  });
+    const data = await res.json();
+    return (data.answer || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+  };
 
-  // Close modal on overlay click
-  document.getElementById('feedModal').addEventListener('click', (e) => {
-    if (e.target === e.currentTarget) closeFeedModal();
-  });
+  // Local file:// → direct to Dify
+  if (location.protocol === 'file:') {
+    return retryCall(() => doCall(DIFY_API_URL, true));
+  }
+  // Deployed: try Vercel proxy first, fallback to direct
+  try {
+    return await doCall(PROXY_URL, false);
+  } catch (e) {
+    return retryCall(() => doCall(DIFY_API_URL, true));
+  }
+}
 
-  async function feedAI() {
-    const input = document.getElementById('feedInput').value.trim();
-    const feedBtn = document.getElementById('feedBtn');
-    const resultDiv = document.getElementById('feedResult');
-    const checkedKb = document.querySelector('#kbSelect label.checked');
-    const kbName = checkedKb ? checkedKb.textContent : '知识库';
+// Retry a call once on failure
+async function retryCall(fn) {
+  try {
+    return await fn();
+  } catch (e) {
+    await new Promise(r => setTimeout(r, 1000));
+    return await fn();
+  }
+}
 
-    if (!input) return;
+// ============================================
+// MODULE 1: 选题生成
+// ============================================
+// Event delegation: clicks on any chip (static or dynamic)
+document.getElementById('chipsRow').addEventListener('click', (e) => {
+  // If clicking the save button inside a chip, save to library instead of generating
+  const saveBtn = e.target.closest('.chip-save-btn');
+  if (saveBtn) {
+    e.stopPropagation();
+    const chip = saveBtn.closest('.chip');
+    if (chip) {
+      const label = chip.dataset.label || chip.textContent.replace('+', '').trim();
+      saveChipTopic(label);
+    }
+    return;
+  }
+  // Normal chip click → generate topics
+  const chip = e.target.closest('.chip');
+  if (!chip) return;
+  const query = chip.dataset.query;
+  if (query) {
+    const inputEl = document.getElementById('topicInput');
+    inputEl.value = chip.dataset.label || query;
+    fetchTopics(query);
+  }
+});
 
-    feedBtn.disabled = true;
-    feedBtn.textContent = '处理中...';
-    resultDiv.classList.add('active');
-    resultDiv.textContent = '⏳ AI 正在分析内容...';
+function pickChip(query) {
+  const inputEl = document.getElementById('topicInput');
+  inputEl.value = query;
+  fetchTopics(query);
+}
 
-    const feedPrompt = `我是一名小红书宠物博主，现在要把一些内容整理到知识库「${kbName}」。
+// Split AI output: analysis/summary section before first "选题1" marker
+function splitAnalysis(text) {
+  const marker = text.match(/选题\s*1\s*[：:]/);
+  if (!marker) return { analysis: '', topics: text };
+  const idx = marker.index;
+  // Walk back to find a clean split point (end of a section, before a heading)
+  const before = text.substring(0, idx).trim();
+  const after = text.substring(idx).trim();
+  // Only treat as analysis if it has substantial content (>100 chars) with analysis keywords
+  const analysisKeywords = /(?:趋势|分析|套路|总结|规律|关注点|结构|爆款|热门|规律|搜索)/;
+  if (before.length > 100 && analysisKeywords.test(before)) {
+    return { analysis: before, topics: after };
+  }
+  return { analysis: '', topics: text };
+}
+
+// Render the analysis section as a collapsible panel
+function renderAnalysisPanel(text) {
+  // Clean up markdown for display
+  let html = text
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>')
+    .replace(/###?\s*(.+)/g, '<h3>$1</h3>')
+    .replace(/##\s*(.+)/g, '<h2>$1</h2>')
+    .replace(/^- (.+)/gm, '<li>$1</li>')
+    .replace(/(\d+)[.、]\s*\*\*(.+?)\*\*/g, '<li><strong>$2</strong>')
+    .replace(/(\d+)[.、]\s*(.+)/g, '<li>$2</li>')
+    .replace(/(<li>[\s\S]*?<\/li>)/g, '<ul>$1</ul>')
+    .replace(/<\/ul>\s*<ul>/g, '')
+    .replace(/---+/g, '<hr>')
+    .replace(/\n\n/g, '<br><br>')
+    .replace(/\n/g, '<br>');
+
+  return `<div class="analysis-panel" id="analysisPanel">
+    <div class="analysis-header" onclick="document.getElementById('analysisPanel').classList.toggle('collapsed')">
+      <span class="a-icon">🔍</span>
+      <h4>话题分析</h4>
+      <span style="font-size:11px;color:var(--text-tertiary)">AI 搜索分析小红书+抖音近7天热门趋势</span>
+      <span class="toggle-arrow">▼</span>
+    </div>
+    <div class="analysis-body">${html}</div>
+  </div>`;
+}
+
+async function fetchTopics(promptOverride) {
+  const inputEl = document.getElementById('topicInput');
+  const sendBtn = document.getElementById('sendBtn');
+  const container = document.getElementById('cardsContainer');
+  const thinkPanel = document.getElementById('thinkingPanel');
+  const thinkContent = document.getElementById('thinkingContent');
+  const errorBanner = document.getElementById('errorBanner');
+  const emptyState = document.getElementById('topicsEmpty');
+
+  const query = promptOverride || inputEl.value.trim();
+  if (!query) { inputEl.focus(); return; }
+
+  sendBtn.disabled = true;
+  sendBtn.textContent = '思考中...';
+  container.innerHTML = '';
+  document.getElementById('analysisContainer').innerHTML = '';
+  errorBanner.classList.remove('active');
+  thinkPanel.classList.add('active');
+  thinkContent.innerHTML = '<span style="color:var(--text-tertiary)">🔍 正在搜索和分析中，预计15-30秒...</span>';
+  emptyState.style.display = 'none';
+
+  try {
+    const answer = await difyFetch(query);
+
+    // Show a preview in thinking panel
+    thinkContent.innerHTML = '<div style="color:var(--success);font-weight:600;margin-bottom:8px">✅ 生成完成！</div>' +
+      '<div style="font-size:13px;color:var(--text-secondary);max-height:300px;overflow-y:auto;line-height:1.8">' +
+      escapeHtml(answer.substring(0, 500)) + (answer.length > 500 ? '...' : '') + '</div>';
+
+    const { analysis, topics } = splitAnalysis(answer);
+    const cards = parseTopics(topics);
+
+    setTimeout(() => {
+      thinkPanel.classList.remove('active');
+      const analysisContainer = document.getElementById('analysisContainer');
+      if (analysis) {
+        analysisContainer.innerHTML = renderAnalysisPanel(analysis);
+      } else {
+        analysisContainer.innerHTML = '';
+      }
+      let cardsHTML = '';
+      if (cards.length === 0 && !analysis) {
+        cardsHTML = renderSingleCard(answer);
+      } else if (cards.length > 0) {
+        cardsHTML = cards.map(c => renderTopicCard(c)).join('');
+      } else if (analysis && topics.trim()) {
+        cardsHTML = renderSingleCard(topics);
+      }
+      container.innerHTML = cardsHTML;
+      updateEmptyStates('topics');
+      saveHistory(query, analysisContainer.innerHTML + container.innerHTML);
+    }, 400);
+
+  } catch (err) {
+    thinkPanel.classList.remove('active');
+    errorBanner.textContent = '❌ ' + (err.message || '网络错误，请稍后重试');
+    errorBanner.classList.add('active');
+    emptyState.style.display = '';
+  } finally {
+    sendBtn.disabled = false;
+    sendBtn.textContent = '生成选题';
+  }
+}
+
+function escapeHtml(s) {
+  const d = document.createElement('div');
+  d.textContent = s;
+  return d.innerHTML;
+}
+
+function parseTopics(text) {
+  const cards = [];
+  const titles = text.match(/选题\s*\d+[：:].*?(?=选题\s*\d|$)/gs);
+  if (titles && titles.length > 0) {
+    titles.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
+    return cards;
+  }
+  const markers = text.match(/###?\s*选题\s*\d+/g);
+  if (markers && markers.length > 0) {
+    const parts = text.split(/###?\s*选题\s*\d+/).filter(s => s.trim());
+    parts.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
+    return cards;
+  }
+  cards.push({ index: 1, raw: text, isSingle: true });
+  return cards;
+}
+
+// Normalize markdown: strip ** around field labels so regex can match
+function normalizeMD(text) {
+  const fields = '标题备选|标题|正文框架|正文|完整正文|配图建议|封面建议|封面怎么做|封面|话题标签|话题|类型|热度|话题热度';
+  return text
+    .replace(new RegExp('\\*\\*(' + fields + ')[：:]\\*\\*', 'gi'), '$1：')
+    .replace(new RegExp('\\*\\*(' + fields + ')[：:]', 'gi'), '$1：')
+    .replace(new RegExp('(' + fields + ')[：:]\\*\\*', 'gi'), '$1：');
+}
+
+function extractField(text, field) {
+  const clean = normalizeMD(text);
+  const patterns = {
+    title:   /(?:标题备选|标题)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:完整正文|正文框架|正文|配图|话题|类型|封面|热度|#|标签|\*\*)|$)/i,
+    content: /(?:完整正文|正文框架|正文)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:配图|话题|类型|封面|热度|#|标签|\*\*)|$)/i,
+    cover:   /(?:配图建议|封面建议|封面怎么做|封面)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:话题|类型|热度|#|标签|\*\*)|$)/i,
+    type:    /类型[：:]\s*(.+?)(?=\n|$)/i,
+    heat:    /(?:热度|话题热度)[：:]\s*(.+?)(?=\n|$)/i,
+  };
+  const m = clean.match(patterns[field]);
+  return m ? m[1].replace(/\*\*/g, '').trim() : '';
+}
+
+function extractTags(text) {
+  const tags = text.match(/#[\w一-鿿]+/g) || [];
+  return [...new Set(tags)].slice(0, 8);
+}
+
+function renderTopicCard(card) {
+  const raw = card.raw;
+  const title = extractField(raw, 'title') || '';
+  const content = extractField(raw, 'content') || '';
+  const cover = extractField(raw, 'cover') || '';
+  const tags = extractTags(raw);
+  const type = extractField(raw, 'type') || '';
+  const heat = extractField(raw, 'heat') || '';
+
+  // Detect if cover text is already embedded in content (dedup)
+  const coverDup = cover && content && content.includes(cover.trim().substring(0, 20));
+
+  const usefulContent = [title, content].filter(s => s.length > 20).length;
+
+  if (usefulContent === 0 && raw.length > 50) {
+    const cleanRaw = raw.replace(/^(好[的了]|没问题|收到|明白|给[你我]|这就|马上|OK)[,，。！\s]*/, '').trim();
+    return '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(cleanRaw.substring(0, 60)) + '...</h4>' + (type ? '<div class="meta-row"><span class="badge accent">' + type + '</span></div>' : '') + '</div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制全文</button><div class="body-text">' + escapeHtml(cleanRaw) + '</div>' + (tags.length ? '<div class="section-label">🏷️ 话题标签</div><div class="tags-row">' + tags.map(function(t){return '<span class="tag">'+t+'</span>';}).join('') + '</div>' : '') + '</div></div>';
+  }
+
+  // Find display title
+  var displayTitle = '';
+  var lines = raw.split('\n');
+  for (var i = 0; i < lines.length; i++) {
+    var cl = lines[i].replace(/[*-]/g, '').trim();
+    if (cl && cl.length > 10 && cl.length < 80 && !cl.match(/^(完整正文|正文|标题|配图|话题|类型|热度|角度|#|🎨|📝|📄|🏷️|好[的了]|没问题)/)) {
+      displayTitle = cl; break;
+    }
+  }
+  if (!displayTitle) displayTitle = raw.substring(0, 60).replace(/\n/g, ' ') + '...';
+
+  var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制</button>';
+
+  if (title) {
+    html += '<div class="section-label">📝 标题备选</div><ul class="title-list">' + title.split('\n').filter(function(t){return t.trim();}).map(function(t){return '<li>' + escapeHtml(t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '').replace(/\*\*/g, '')) + '</li>';}).join('') + '</ul>';
+  }
+
+  if (content) {
+    html += '<div class="section-label">📄 正文</div><div class="body-text">' + content.replace(/\n/g, '<br>') + '</div>';
+  }
+
+  if (cover && !coverDup) {
+    html += '<div class="section-label">🎨 配图建议</div><div class="cover-note">' + cover.replace(/\n/g, '<br>') + '</div>';
+  }
+
+  if (tags.length) {
+    html += '<div class="section-label">🏷️ 话题标签</div><div class="tags-row">' + tags.map(function(t){return '<span class="tag">'+t+'</span>';}).join('') + '</div>';
+  }
+
+  html += '</div></div>';
+  return html;
+}
+
+function renderSingleCard(text) {
+  return `<div class="topic-card"><div class="card-top"><div class="card-num">生成结果</div></div><div class="card-content"><div class="body-text">${escapeHtml(text)}</div></div></div>`;
+}
+
+function copyCardText(btn) {
+  const card = btn.closest('.topic-card');
+  const text = card.innerText.replace('📋 复制全文', '').replace('📋 复制', '');
+  navigator.clipboard.writeText(text).then(() => showToast('已复制到剪贴板'));
+}
+
+// ============================================
+// MODULE 2: 卖货贴
+// ============================================
+async function generateProductPost() {
+  const prodBtn = document.getElementById('prodBtn');
+  const name = document.getElementById('prodName').value.trim();
+  const brand = document.getElementById('prodBrand').value.trim();
+  const category = document.getElementById('prodCategory').value.trim();
+  const officialPrice = document.getElementById('prodOfficialPrice').value.trim();
+  const channelPrice = document.getElementById('prodChannelPrice').value.trim();
+  const sellingPoints = document.getElementById('prodSellingPoints').value.trim();
+
+  if (!name) {
+    document.getElementById('prodName').focus();
+    return;
+  }
+
+  const thinkPanel = document.getElementById('prodThinkingPanel');
+  const thinkContent = document.getElementById('prodThinkingContent');
+  const errorBanner = document.getElementById('prodErrorBanner');
+  const resultCard = document.getElementById('prodResultCard');
+  const resultContent = document.getElementById('prodResultContent');
+  const emptyState = document.getElementById('productEmpty');
+
+  prodBtn.disabled = true;
+  prodBtn.textContent = '生成中...';
+  errorBanner.classList.remove('active');
+  resultCard.classList.remove('active');
+  thinkPanel.classList.add('active');
+  thinkContent.innerHTML = '<span style="color:var(--text-tertiary)">🔍 正在搜索天猫/淘宝/小红书价格和竞品笔记...</span>';
+  emptyState.style.display = 'none';
+
+  const prompt = `你是我的AI种草文案专家，请帮我针对以下产品，执行一次全方位的市场调研并输出一篇小红书带货笔记。
+
+## 我提供的产品线索
+- 产品名称：${name}
+${brand ? '- 品牌：' + brand : ''}
+${category ? '- 品类：' + category : ''}
+${officialPrice ? '- 官方旗舰店价格参考：' + officialPrice : ''}
+${channelPrice ? '- 我的渠道价格：' + channelPrice : ''}
+${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
+
+## ⚠️ 重要：你必须主动搜索，不要依赖我提供的信息
+**请立即使用联网搜索工具，完成以下调研：**
+
+### 搜索任务1：全网价格调研
+- 搜索天猫旗舰店、淘宝、京东该产品的当前售价
+- 搜索拼多多、抖音商城该产品的价格
+- 整理出各渠道的价格对比
+
+### 搜索任务2：小红书竞品分析
+- 搜索小红书该产品的热门种草笔记（至少看3-5篇）
+- 分析这些笔记的：标题套路、正文结构、拍摄风格、高频话题标签
+- 提取评论区用户最关心的问题
+
+### 搜索任务3：产品口碑挖掘
+- 搜索该产品的真实用户评价（好评+差评）
+- 找出用户最在意的卖点和最常见的吐槽
+- 搜索"${name} 测评"或"${brand ? brand : name} 猫粮/狗粮 怎么样"
+
+## 基于以上调研结果，生成小红书笔记
+1. **3个标题备选** — 参考小红书爆款标题套路，结合你搜到的热门笔记标题风格
+2. **完整正文（300-500字）** — 可直接复制发布，融入你搜到的真实用户反馈和价格数据
+3. **价格对比板块** — 用你搜到的各平台真实价格做对比表格，突出我的渠道价优势
+4. **配图建议** — 基于你搜到的热门笔记配图风格来建议
+5. **话题标签** — 结合你搜到的高频标签 + 产品相关长尾标签
+6. **评论区互动预判** — 根据你搜到的竞品笔记评论区，预判用户会问什么，预写回复话术
+
+## 写作规范
+- 紧扣"大牌正品、价格碾压官旗"核心卖点
+- 风格：像讲"内行才知道"的秘密，先提供价值（知识/评测/避坑），价格放最后
+- 去AI味：禁止"首先其次最后""综上所述""值得注意的是""不可否认"
+- 短句快节奏，一段不超过3-4行，像真人博主聊天
+- 结尾自然引导："想了解的姐妹扣1"或"主页有方式"
+- 所有价格数据必须是你搜索到的真实数据，不要编造`;
+
+  let fullAnswer = '';
+
+  try {
+    fullAnswer = await difyFetch(prompt);
+
+    setTimeout(() => {
+      thinkPanel.classList.remove('active');
+      resultContent.innerHTML = escapeHtml(fullAnswer).replace(/\n/g, '<br>');
+      resultCard.classList.add('active');
+      updateEmptyStates('product');
+    }, 400);
+
+  } catch (err) {
+    thinkPanel.classList.remove('active');
+    const msg = err.message || '';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
+      errorBanner.innerHTML = '❌ 网络请求失败<br><small style="color:var(--text-tertiary)">可能是 Dify API 暂时不可用，请稍后重试。如果使用本地文件（file://）打开，请确认网络连接正常。已自动重试过1次。</small>';
+    } else if (msg.includes('429') || msg.includes('rate')) {
+      errorBanner.innerHTML = '❌ 请求太频繁<br><small style="color:var(--text-tertiary)">Dify API 限流，请等几秒后再试。</small>';
+    } else {
+      errorBanner.innerHTML = '❌ ' + escapeHtml(msg) + '<br><small style="color:var(--text-tertiary)">请检查 Dify 应用是否在线，或稍后重试。</small>';
+    }
+    errorBanner.classList.add('active');
+    emptyState.style.display = '';
+  } finally {
+    prodBtn.disabled = false;
+    prodBtn.textContent = '✨ 生成卖货贴';
+  }
+}
+
+function copyProdResult() {
+  const content = document.getElementById('prodResultContent').innerText;
+  navigator.clipboard.writeText(content).then(() => showToast('已复制到剪贴板'));
+}
+
+// ============================================
+// MODULE 3: 喂饭给 AI
+// ============================================
+// KB selector
+document.getElementById('kbSelect').addEventListener('click', (e) => {
+  if (e.target.classList.contains('kb-opt')) {
+    document.querySelectorAll('#kbSelect .kb-opt').forEach(o => o.classList.remove('selected'));
+    e.target.classList.add('selected');
+  }
+});
+
+async function feedAI() {
+  const input = document.getElementById('feedInput').value.trim();
+  const feedBtn = document.getElementById('feedBtn');
+  const resultDiv = document.getElementById('feedResult');
+  const selectedKb = document.querySelector('#kbSelect .kb-opt.selected');
+  const kbName = selectedKb ? selectedKb.textContent.trim() : '知识库';
+
+  if (!input) { document.getElementById('feedInput').focus(); return; }
+
+  feedBtn.disabled = true;
+  feedBtn.textContent = '处理中...';
+  resultDiv.classList.add('active');
+  resultDiv.textContent = '⏳ AI 正在分析内容...';
+
+  const feedPrompt = `我是一名小红书宠物博主，现在要把一些内容整理到知识库「${kbName}」。
 
 请分析以下我粘贴的内容，帮我整理成知识库文档格式（Markdown）：
 
@@ -730,51 +2027,296 @@ ${input}
 3. 如果是产品信息：提取品牌、品类、价格、卖点
 4. 输出完整的 Markdown 格式，方便我直接复制存入知识库`;
 
-    try {
-      const res = await fetch(PROXY_URL, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query: feedPrompt }),
-      });
+  try {
+    const answer = await difyFetch(feedPrompt);
+    resultDiv.innerHTML = escapeHtml(answer).replace(/\n/g, '<br>') || '处理完成';
 
-      if (!res.ok) throw new Error(`API ${res.status}`);
+  } catch (err) {
+    resultDiv.textContent = '❌ ' + (err.message || '网络错误');
+  } finally {
+    feedBtn.disabled = false;
+    feedBtn.textContent = '🤖 整理入库';
+  }
+}
 
-      const reader = res.body.getReader();
-      const decoder = new TextDecoder();
-      let buffer = '';
-      let fullText = '';
+// ============================================
+// UTILS
+// ============================================
+function showToast(msg) {
+  const toast = document.getElementById('toast');
+  toast.textContent = msg;
+  toast.classList.add('show');
+  setTimeout(() => toast.classList.remove('show'), 2000);
+}
 
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        buffer += decoder.decode(value, { stream: true });
-        const lines = buffer.split('\n');
-        buffer = lines.pop() || '';
-        for (const line of lines) {
-          if (!line.startsWith('data: ')) continue;
-          try {
-            const json = JSON.parse(line.slice(6));
-            if (json.event === 'message' && json.answer) {
-              fullText += json.answer;
-              const clean = fullText.replace(/<think>[\s\S]*?<\/think>/g, '');
-              resultDiv.textContent = clean || '处理中...';
-            }
-          } catch(e) {}
-        }
-      }
+// Enter key submit
+document.getElementById('topicInput').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') fetchTopics();
+});
 
-    } catch (err) {
-      resultDiv.textContent = `❌ ${err.message}`;
-    } finally {
-      feedBtn.disabled = false;
-      feedBtn.textContent = '🤖 整理入库';
+document.getElementById('prodName').addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') generateProductPost();
+});
+
+// ============================================
+// DYNAMIC HOT TOPIC CHIPS
+// ============================================
+async function refreshChips() {
+  const chipsRow = document.getElementById('chipsRow');
+  const refreshBtn = document.getElementById('refreshChipsBtn');
+
+  refreshBtn.disabled = true;
+  refreshBtn.textContent = '⏳ 搜索中...';
+
+  const prompt = `搜索小红书+抖音宠物赛道当下最热话题（结合${new Date().toLocaleDateString('zh-CN')}季节节日），给19个选题方向。纯输出emoji+短语，每行一个。注意：每个方向前面必须带一个相关emoji。`;
+
+  try {
+    const answer = await difyFetch(prompt);
+
+    const topicLines = answer.split('\n').filter(l => l.trim()).slice(0, 19);
+
+    if (topicLines.length === 0) throw new Error('未获取到话题');
+
+    // Keep the fixed chip
+    const fixedChip = chipsRow.querySelector('.chip.fixed');
+    const fixedHTML = fixedChip ? fixedChip.outerHTML : '';
+
+    // Render each chip with save button
+    const renderChip = (line) => {
+      const display = line.replace(/^\d+[.、.\s]+/, '').trim();
+      const searchTerm = display.replace(/[^一-龥a-zA-Z0-9]/g, '').trim();
+      const query = `搜索小红书和抖音近7天【${searchTerm}】相关热门帖子和爆款笔记，分析标题套路、正文结构和评论区用户关注点。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签`;
+      return `<span class="chip" data-label="${escapeHtml(display)}" data-query="${escapeHtml(query)}">${escapeHtml(display)}<button class="chip-save-btn" title="收藏到备选题库">+</button></span>`;
+    };
+
+    // 6-7-6 layout: three sub-rows
+    const row1 = topicLines.slice(0, 6);
+    const row2 = topicLines.slice(6, 13);
+    const row3 = topicLines.slice(13, 19);
+
+    let html = '';
+    // Row 1: fixed chip + 5 dynamic (total 6)
+    html += '<div class="chips-subrow">';
+    if (fixedHTML) html += fixedHTML;
+    html += row1.map(renderChip).join('');
+    html += '</div>';
+
+    // Row 2: 7 dynamic chips
+    if (row2.length > 0) {
+      html += '<div class="chips-subrow">' + row2.map(renderChip).join('') + '</div>';
+    }
+
+    // Row 3: 6 dynamic chips
+    if (row3.length > 0) {
+      html += '<div class="chips-subrow">' + row3.map(renderChip).join('') + '</div>';
+    }
+
+    // Refresh button on its own line
+    html += '<div class="chips-subrow"><button class="btn btn-ghost btn-sm" id="refreshChipsBtn" onclick="refreshChips()" title="换一批热门话题">🔄 换一批</button></div>';
+
+    chipsRow.innerHTML = html;
+
+  } catch (err) {
+    chipsRow.innerHTML = chipsRow.innerHTML.replace(/🔄 换一批|⏳ 搜索中.../, '🔄 换一批');
+    showToast('话题刷新失败，请重试');
+  } finally {
+    const newBtn = document.getElementById('refreshChipsBtn');
+    if (newBtn) {
+      newBtn.disabled = false;
+      newBtn.textContent = '🔄 换一批';
     }
   }
+}
 
-  // ========== Keyboard ==========
-  document.getElementById('topicInput').addEventListener('keydown', (e) => {
-    if (e.key === 'Enter') fetchTopics();
+// ============================================
+// HISTORY
+// ============================================
+const HISTORY_KEY = 'topic_history';
+const MAX_HISTORY = 50;
+
+function saveHistory(query, cardsHTML) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  // Extract preview from first card title
+  let preview = '';
+  const titleMatch = cardsHTML.match(/<h4>([\s\S]*?)<\/h4>/);
+  if (titleMatch) preview = titleMatch[1].replace(/<[^>]*>/g, '').trim().substring(0, 60);
+
+  history.unshift({
+    id: Date.now().toString(),
+    time: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    query: query.substring(0, 80),
+    cardsHTML: cardsHTML,
+    preview: preview || '查看详情'
   });
+
+  // Prune
+  if (history.length > MAX_HISTORY) history.length = MAX_HISTORY;
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+}
+
+function loadHistory() {
+  const list = document.getElementById('historyList');
+  const countEl = document.getElementById('historyCount');
+  const clearBtn = document.getElementById('clearHistoryBtn');
+  const emptyEl = document.getElementById('historyEmpty');
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+
+  countEl.textContent = '共 ' + history.length + ' 条';
+  clearBtn.style.display = history.length > 0 ? '' : 'none';
+
+  if (history.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(emptyEl);
+    emptyEl.style.display = '';
+    return;
+  }
+
+  list.innerHTML = history.map(h => `
+    <div class="history-item" onclick="restoreHistory('${h.id}')">
+      <span class="h-time">${escapeHtml(h.time)}</span>
+      <div class="h-body">
+        <div class="h-query">${escapeHtml(h.query)}</div>
+        <div class="h-preview">${escapeHtml(h.preview)}</div>
+      </div>
+      <button class="h-delete" onclick="event.stopPropagation();deleteHistory('${h.id}')" title="删除">✕</button>
+    </div>
+  `).join('');
+}
+
+function deleteHistory(id) {
+  let history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  history = history.filter(h => h.id !== id);
+  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  loadHistory();
+  showToast('已删除');
+}
+
+function clearHistory() {
+  if (!confirm('确定要清空所有历史记录吗？此操作不可恢复。')) return;
+  localStorage.removeItem(HISTORY_KEY);
+  loadHistory();
+  showToast('历史记录已清空');
+}
+
+function restoreHistory(id) {
+  const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
+  const entry = history.find(h => h.id === id);
+  if (!entry) return;
+
+  // Switch to topics module
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-module="topics"]').classList.add('active');
+  document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+  document.getElementById('module-topics').classList.add('active');
+  document.getElementById('moduleTitle').textContent = '选题生成';
+  document.getElementById('moduleDesc').textContent = '为你的宠物账号生成热门选题';
+
+  // Restore cards
+  document.getElementById('cardsContainer').innerHTML = entry.cardsHTML;
+  document.getElementById('topicInput').value = entry.query;
+  document.getElementById('topicsEmpty').style.display = 'none';
+  document.getElementById('thinkingPanel').classList.remove('active');
+
+  showToast('已恢复历史选题');
+}
+
+// ============================================
+// SAVED TOPICS LIBRARY (备选题库)
+// ============================================
+const SAVED_KEY = 'saved_topics';
+const MAX_SAVED = 100;
+
+function saveChipTopic(label) {
+  const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+  if (saved.some(s => s.title === label)) {
+    showToast('该选题已在备选题库中');
+    return;
+  }
+  saved.unshift({
+    id: Date.now().toString(),
+    time: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
+    title: label,
+    content: '',
+    tags: [],
+    cardsHTML: ''
+  });
+  if (saved.length > MAX_SAVED) saved.length = MAX_SAVED;
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  showToast('已收藏到备选题库 ✅');
+}
+
+function loadSavedTopics() {
+  const list = document.getElementById('savedList');
+  const countEl = document.getElementById('savedCount');
+  const clearBtn = document.getElementById('clearSavedBtn');
+  const emptyEl = document.getElementById('savedEmpty');
+  const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+
+  countEl.textContent = '共 ' + saved.length + ' 条';
+  clearBtn.style.display = saved.length > 0 ? '' : 'none';
+
+  if (saved.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(emptyEl);
+    emptyEl.style.display = '';
+    return;
+  }
+
+  list.innerHTML = saved.map((s, i) => `
+    <div class="saved-item" onclick="generateFromSaved('${s.id}')">
+      <span class="s-num">#${i + 1}</span>
+      <div class="s-body">
+        <div class="s-title">${escapeHtml(s.title)}</div>
+        <div class="s-meta">
+          <span class="s-time">${escapeHtml(s.time)}</span>
+          ${s.content ? '<span style="color:var(--text-tertiary)">' + escapeHtml(s.content.substring(0, 40)) + '...</span>' : ''}
+          ${s.tags && s.tags.length ? '<span class="s-tags">' + s.tags.slice(0, 3).map(t => '<span class="stag">' + escapeHtml(t) + '</span>').join('') + '</span>' : ''}
+        </div>
+      </div>
+      <button class="s-delete" onclick="event.stopPropagation();deleteSavedTopic('${s.id}')" title="删除">✕</button>
+    </div>
+  `).join('');
+}
+
+function deleteSavedTopic(id) {
+  let saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+  saved = saved.filter(s => s.id !== id);
+  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  loadSavedTopics();
+  showToast('已从备选题库移除');
+}
+
+function clearSavedTopics() {
+  if (!confirm('确定要清空所有收藏的选题吗？此操作不可恢复。')) return;
+  localStorage.removeItem(SAVED_KEY);
+  loadSavedTopics();
+  showToast('备选题库已清空');
+}
+
+function generateFromSaved(id) {
+  const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+  const entry = saved.find(s => s.id === id);
+  if (!entry) return;
+
+  // Switch to topics module
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-module="topics"]').classList.add('active');
+  document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+  document.getElementById('module-topics').classList.add('active');
+  document.getElementById('moduleTitle').textContent = '选题生成';
+  document.getElementById('moduleDesc').textContent = '为你的宠物账号生成热门选题';
+
+  // Use the title as the search query to generate 6 new topics
+  const query = `搜索小红书和抖音近7天【${entry.title}】相关热门帖子和爆款笔记，分析标题套路、正文结构和评论区用户关注点。必须严格输出6个完整选题（选题1、选题2...选题6），每个都要：完整正文（适当加emoji）+配图建议+话题标签`;
+
+  document.getElementById('topicInput').value = entry.title;
+  fetchTopics(query);
+  showToast('正在基于收藏选题生成新内容...');
+}
+
+// Init empty states
+updateEmptyStates('topics');
 </script>
+
 </body>
 </html>
