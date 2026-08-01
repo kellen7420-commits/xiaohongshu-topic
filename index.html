@@ -570,32 +570,40 @@
   // ========== Parse Topics ==========
   function parseTopics(text) {
     const cards = [];
-    const sections = text.split(/选题\s*\d+[：:]/g);
+    // Try matching "选题N：..." pattern
     const titles = text.match(/选题\s*\d+[：:].*?(?=选题\s*\d|$)/gs);
-
     if (titles && titles.length > 0) {
       titles.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
-    } else if (sections.length > 1) {
-      sections.slice(1).forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
-    } else {
-      cards.push({ index: 1, raw: text });
+      return cards;
     }
+    // Try splitting on "### 选题" or numbered markers
+    const markers = text.match(/###?\s*选题\s*\d+/g);
+    if (markers && markers.length > 0) {
+      const parts = text.split(/###?\s*选题\s*\d+/).filter(s => s.trim());
+      parts.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
+      return cards;
+    }
+    // Single result: wrap full text
+    cards.push({ index: 1, raw: text, isSingle: true });
     return cards;
   }
 
   function extractField(text, field) {
     const patterns = {
-      title: /(?:标题备选|标题)[：:]\s*\n?(.+?)(?=\n\n|\n(?:正文|配图|话题|类型|角度|#)|$)/s,
-      content: /(?:正文框架|正文)[：:]\s*\n?(.+?)(?=\n\n|\n(?:配图|话题|类型|封面|#)|$)/s,
-      cover: /(?:配图建议|封面建议|封面怎么做)[：:]\s*\n?(.+?)(?=\n\n|\n(?:话题|类型|#)|$)/s,
-      type: /(?:类型)[：:]\s*(.+?)(?=\n|$)/,
-      heat: /(?:热度|话题热度)[：:]\s*(.+?)(?=\n|$)/,
+      title: /(?:标题备选|标题)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:正文|配图|话题|类型|封面|#|标签)|$)/i,
+      content: /(?:正文框架|正文|完整正文)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:配图|话题|类型|封面|#|标签)|$)/i,
+      cover: /(?:配图建议|封面建议|封面怎么做|封面)[：:]\s*\n?([\s\S]+?)(?=\n\n(?:话题|类型|#|标签)|$)/i,
+      type: /类型[：:]\s*(.+?)(?=\n|$)/i,
+      heat: /(?:热度|话题热度)[：:]\s*(.+?)(?=\n|$)/i,
     };
-    const match = text.match(patterns[field]);
-    return match ? match[1].trim() : '';
+    const m = text.match(patterns[field]);
+    return m ? m[1].trim() : '';
   }
 
-  function extractTags(text) { return text.match(/#[\w一-鿿]+/g) || []; }
+  function extractTags(text) {
+    const tags = text.match(/#[\w一-鿿]+/g) || [];
+    return [...new Set(tags)];
+  }
 
   function renderCard(card) {
     const raw = card.raw;
@@ -606,20 +614,41 @@
     const type = extractField(raw, 'type') || '';
     const heat = extractField(raw, 'heat') || '';
 
+    // If nothing useful was extracted, fall back to showing full raw text
+    const usefulContent = [title, content].filter(s => s.length > 20).length;
+    if (usefulContent === 0 && raw.length > 50) {
+      // Strip common opening phrases
+      const cleanRaw = raw.replace(/^(好[的了]|没问题|收到|明白|给[你我]|这就|马上|OK)[,，。！\s]*/, '').trim();
+      return `
+        <div class="card">
+          <div class="card-header">
+            <div class="card-num">${card.isSingle ? '生成结果' : '选题 #'+card.index}</div>
+            <div class="card-title" style="font-size:15px">${cleanRaw.substring(0,50)}...</div>
+            ${type ? `<div class="card-meta"><span>${type}</span></div>` : ''}
+          </div>
+          <div class="card-body">
+            <button class="copy-btn" onclick="copyCard(this)">📋 复制全文</button>
+            <div class="content" style="white-space:pre-wrap">${escapeHtml(cleanRaw)}</div>
+            ${tags.length > 0 ? `<h3>🏷️ 话题标签</h3><div class="tags">${tags.map(t=>`<span>${t}</span>`).join('')}</div>` : ''}
+          </div>
+        </div>`;
+    }
+
+    // Normal card with extracted fields
     let displayTitle = '';
     const lines = raw.split('\n');
     for (const line of lines) {
       const clean = line.replace(/[*-]/g, '').trim();
-      if (clean && clean.length > 6 && clean.length < 60 && !clean.match(/^(标题|正文|配图|话题|类型|热度|角度|#|🎨)/)) {
+      if (clean && clean.length > 10 && clean.length < 80 && !clean.match(/^(标题|正文|配图|话题|类型|热度|角度|#|🎨|📝|📄|🏷️|好[的了]|没问题)/)) {
         displayTitle = clean; break;
       }
     }
-    if (!displayTitle) displayTitle = raw.substring(0, 60) + '...';
+    if (!displayTitle) displayTitle = raw.substring(0, 60).replace(/\n/g, ' ') + '...';
 
     return `
       <div class="card">
         <div class="card-header">
-          <div class="card-num">选题 #${card.index}</div>
+          <div class="card-num">${card.isSingle ? '生成结果' : '选题 #'+card.index}</div>
           <div class="card-title">${displayTitle}</div>
           <div class="card-meta">
             ${heat ? `<span>${heat}</span>` : ''}
@@ -629,7 +658,7 @@
         <div class="card-body">
           <button class="copy-btn" onclick="copyCard(this)">📋 复制</button>
           ${title ? `<h3>📝 标题备选</h3><ul class="titles">${title.split('\n').filter(t=>t.trim()).map(t=>`<li>${t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '')}</li>`).join('')}</ul>` : ''}
-          ${content ? `<h3>📄 正文框架</h3><div class="content">${content.replace(/\n/g, '<br>')}</div>` : ''}
+          ${content ? `<h3>📄 正文</h3><div class="content">${content.replace(/\n/g, '<br>')}</div>` : ''}
           ${cover ? `<h3>🎨 配图建议</h3><div class="cover-box">${cover.replace(/\n/g, '<br>')}</div>` : ''}
           ${tags.length > 0 ? `<h3>🏷️ 话题标签</h3><div class="tags">${tags.map(t=>`<span>${t}</span>`).join('')}</div>` : ''}
         </div>
