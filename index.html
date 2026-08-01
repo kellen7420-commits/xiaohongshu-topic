@@ -707,14 +707,9 @@
     }
 
     .topic-card .copy-btn {
-      position: absolute;
-      top: var(--space-4);
-      right: var(--space-4);
-      opacity: 0;
-      transition: opacity var(--duration-fast);
+      margin-top: var(--space-2);
+      margin-right: var(--space-2);
     }
-
-    .topic-card:hover .copy-btn { opacity: 1; }
 
     /* ============================================
        ANALYSIS PANEL (trend summary before cards)
@@ -1334,6 +1329,9 @@
     <div class="nav-item" data-module="saved">
       <span class="icon">📌</span> <span>备选题库</span>
     </div>
+    <div class="nav-item" data-module="notes">
+      <span class="icon">💾</span> <span>笔记收藏</span>
+    </div>
   </nav>
   <div class="sidebar-footer">
     <div class="status-dot" id="sidebarStatus">Dify 已连接</div>
@@ -1559,7 +1557,29 @@
     </div>
 
     <!-- ============================================
-         MODULE 5: 历史记录
+         MODULE 5: 笔记收藏
+         ============================================ -->
+    <div class="module" id="module-notes">
+      <div class="card">
+        <div class="card-header">
+          <h3>💾 笔记收藏</h3>
+          <div style="display:flex;gap:var(--space-3);align-items:center;">
+            <span style="font-size:12px;color:var(--text-tertiary)" id="notesCount">共 0 条</span>
+            <button class="btn btn-ghost btn-sm" onclick="clearSavedNotes()" id="clearNotesBtn" style="display:none">🗑️ 清空全部</button>
+          </div>
+        </div>
+        <div class="card-body" id="notesList" style="padding:0;">
+          <div class="empty-state" id="notesEmpty">
+            <div class="empty-icon">💾</div>
+            <h4>暂无收藏的笔记</h4>
+            <p>在生成的话题卡片右上角，点击 ♡ 按钮即可将完整笔记收藏到这里</p>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ============================================
+         MODULE 6: 历史记录
          ============================================ -->
     <div class="module" id="module-history">
       <div class="card">
@@ -1594,7 +1614,8 @@ const moduleMap = {
   topics:  { title: '选题生成', desc: '为你的宠物账号生成热门选题', empty: 'topicsEmpty' },
   product: { title: '卖货贴', desc: '输入产品信息，生成种草笔记', empty: 'productEmpty' },
   feed:    { title: '喂饭给 AI', desc: '投喂内容，让 AI 更懂你的账号', empty: 'feedEmpty' },
-  saved:   { title: '备选题库', desc: '收藏的好选题，随时拿出来用', empty: 'savedEmpty' },
+  saved:   { title: '备选题库', desc: '收藏的选题方向，点击可生成新内容', empty: 'savedEmpty' },
+  notes:   { title: '笔记收藏', desc: '收藏的完整笔记，随时查阅复用', empty: 'notesEmpty' },
   history: { title: '历史记录', desc: '查看和回顾之前生成过的选题', empty: 'historyEmpty' }
 };
 
@@ -1615,6 +1636,7 @@ document.querySelectorAll('.nav-item').forEach(item => {
     // Load history when switching to history tab
     if (module === 'history') loadHistory();
     if (module === 'saved') loadSavedTopics();
+    if (module === 'notes') loadSavedNotes();
   });
 });
 
@@ -1634,6 +1656,9 @@ function updateEmptyStates(module) {
   }
   if (module === 'saved') {
     loadSavedTopics();
+  }
+  if (module === 'notes') {
+    loadSavedNotes();
   }
 }
 
@@ -1941,7 +1966,7 @@ function renderTopicCard(card) {
 
   if (usefulContent === 0 && raw.length > 50) {
     const cleanRaw = raw.replace(/^(好[的了]|没问题|收到|明白|给[你我]|这就|马上|OK)[,，。！\s]*/, '').trim();
-    return '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(cleanRaw.substring(0, 60)) + '...</h4>' + (type ? '<div class="meta-row"><span class="badge accent">' + type + '</span></div>' : '') + '<button class="card-save-btn" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到备选题库">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制全文</button><div class="body-text">' + escapeHtml(cleanRaw) + '</div>' + (tags.length ? '<div class="section-label">🏷️ 话题标签</div><div class="tags-row">' + tags.map(function(t){return '<span class="tag">'+t+'</span>';}).join('') + '</div>' : '') + '</div></div>';
+    return '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(cleanRaw.substring(0, 60)) + '...</h4>' + (type ? '<div class="meta-row"><span class="badge accent">' + type + '</span></div>' : '') + '<button class="card-save-btn" data-title="' + escapeHtml(cleanRaw.substring(0, 50)) + '" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到笔记收藏">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制全文</button><div class="body-text">' + escapeHtml(cleanRaw) + '</div>' + (tags.length ? '<div class="section-label">🏷️ 话题标签</div><div class="tags-row">' + tags.map(function(t){return '<span class="tag">'+t+'</span>';}).join('') + '</div>' : '') + '</div></div>';
   }
 
   // Find display title
@@ -1955,7 +1980,7 @@ function renderTopicCard(card) {
   }
   if (!displayTitle) displayTitle = raw.substring(0, 60).replace(/\n/g, ' ') + '...';
 
-  var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div><button class="card-save-btn" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到备选题库">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)">📋 复制</button>';
+  var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div><button class="card-save-btn" data-title="' + escapeHtml(displayTitle) + '" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到笔记收藏">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)" style="margin-right:8px">📋 复制</button>';
 
   if (title) {
     html += '<div class="section-label">📝 标题备选</div><ul class="title-list">' + title.split('\n').filter(function(t){return t.trim();}).map(function(t){return '<li>' + escapeHtml(t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '').replace(/\*\*/g, '')) + '</li>';}).join('') + '</ul>';
@@ -2351,22 +2376,27 @@ function saveChipTopic(label) {
   showToast('已收藏到备选题库 ✅');
 }
 
-// Save a generated topic card to the library
+// Save a generated topic card to NOTES library (笔记收藏)
+const NOTES_KEY = 'saved_notes';
+const MAX_NOTES = 100;
+
 function saveTopicCard(btn) {
   const card = btn.closest('.topic-card');
   if (!card) return;
   const cardHTML = card.outerHTML;
-  const cardText = card.innerText.trim();
-  // Use first meaningful line as title
-  const lines = cardText.split('\n').filter(l => l.trim());
-  let title = lines[0] || '选题';
+  // Use the data-title attribute (actual card title) if available
+  let title = btn.getAttribute('data-title') || '';
+  if (!title) {
+    const h4 = card.querySelector('h4');
+    title = h4 ? h4.textContent.trim() : '未命名笔记';
+  }
   if (title.length > 50) title = title.substring(0, 50) + '...';
 
-  const saved = JSON.parse(localStorage.getItem(SAVED_KEY) || '[]');
+  const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
 
   // Check for duplicates by title
   if (saved.some(s => s.title === title)) {
-    showToast('该选题已在备选题库中');
+    showToast('该笔记已在笔记收藏中');
     return;
   }
 
@@ -2374,17 +2404,83 @@ function saveTopicCard(btn) {
     id: Date.now().toString(),
     time: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
     title: title,
-    content: cardText.substring(0, 500),
-    tags: [],
     cardsHTML: cardHTML
   });
 
-  if (saved.length > MAX_SAVED) saved.length = MAX_SAVED;
-  localStorage.setItem(SAVED_KEY, JSON.stringify(saved));
+  if (saved.length > MAX_NOTES) saved.length = MAX_NOTES;
+  localStorage.setItem(NOTES_KEY, JSON.stringify(saved));
 
   btn.classList.add('saved');
   btn.innerHTML = '✓';
-  showToast('已收藏到备选题库 ✅');
+  showToast('已收藏到笔记收藏 ✅');
+}
+
+// ── 笔记收藏 CRUD ──
+function loadSavedNotes() {
+  const list = document.getElementById('notesList');
+  const countEl = document.getElementById('notesCount');
+  const clearBtn = document.getElementById('clearNotesBtn');
+  const emptyEl = document.getElementById('notesEmpty');
+  const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
+
+  countEl.textContent = '共 ' + saved.length + ' 条';
+  clearBtn.style.display = saved.length > 0 ? '' : 'none';
+
+  if (saved.length === 0) {
+    list.innerHTML = '';
+    list.appendChild(emptyEl);
+    emptyEl.style.display = '';
+    return;
+  }
+
+  list.innerHTML = saved.map((s, i) => `
+    <div class="saved-item" onclick="restoreSavedNote('${s.id}')">
+      <span class="s-num">#${i + 1}</span>
+      <div class="s-body">
+        <div class="s-title">${escapeHtml(s.title)}</div>
+        <div class="s-meta">
+          <span class="s-time">${escapeHtml(s.time)}</span>
+        </div>
+      </div>
+      <button class="s-delete" onclick="event.stopPropagation();deleteSavedNote('${s.id}')" title="删除">✕</button>
+    </div>
+  `).join('');
+}
+
+function restoreSavedNote(id) {
+  const saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
+  const entry = saved.find(s => s.id === id);
+  if (!entry || !entry.cardsHTML) return;
+
+  // Switch to topics module and show the card
+  document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+  document.querySelector('.nav-item[data-module="topics"]').classList.add('active');
+  document.querySelectorAll('.module').forEach(m => m.classList.remove('active'));
+  document.getElementById('module-topics').classList.add('active');
+  document.getElementById('moduleTitle').textContent = '选题生成';
+  document.getElementById('moduleDesc').textContent = '查看收藏的笔记';
+  document.getElementById('thinkingPanel').classList.remove('active');
+  document.getElementById('analysisContainer').innerHTML = '';
+  document.getElementById('cardsContainer').innerHTML = entry.cardsHTML;
+  document.getElementById('errorBanner').classList.remove('active');
+  document.getElementById('topicsEmpty').style.display = 'none';
+  updateEmptyStates('topics');
+  showToast('已还原收藏的笔记 📄');
+}
+
+function deleteSavedNote(id) {
+  let saved = JSON.parse(localStorage.getItem(NOTES_KEY) || '[]');
+  saved = saved.filter(s => s.id !== id);
+  localStorage.setItem(NOTES_KEY, JSON.stringify(saved));
+  loadSavedNotes();
+  showToast('已从笔记收藏移除');
+}
+
+function clearSavedNotes() {
+  if (!confirm('确定要清空所有收藏的笔记吗？此操作不可恢复。')) return;
+  localStorage.removeItem(NOTES_KEY);
+  loadSavedNotes();
+  showToast('笔记收藏已清空');
 }
 
 function loadSavedTopics() {
