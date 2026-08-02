@@ -2317,11 +2317,28 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 ## 输出格式（严格遵循）
 **禁止输出任何问候语、开场白、或"好的/稍等/交给"等废话。直接按以下格式输出：**
 
-先输出一段搜索调研总结（各平台价格对比+小红书关键词提取，200字以内），然后换行写 ===，再输出3个标题块（用 --- 分隔）：
+先输出一段搜索调研总结（各平台价格对比+小红书关键词提取，200字以内），然后换行写 ===，再输出3个标题块。
 
-[搜索调研总结：各平台价格 + 小红书高频关键词]
+**⚠️ 三个标题块之间必须用独占一行的 --- 分隔！这是页面拆分卡片的标记，没有它三个风格会混在一起！**
+
+格式示例：
+
+搜索调研总结文字...
 
 ===
+
+风格一标题内容...
+（多行正文）
+
+---
+
+风格二标题内容...
+（多行正文）
+
+---
+
+风格三标题内容...
+（多行正文）
 
 ### 风格一：性价比炸裂
 💥 [价格][品牌][产品名] + 紧迫感词
@@ -2329,13 +2346,12 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 [卖点bullet — 3-6行，每行emoji + 关键卖点]
 [价格对比 — 🍑/官旗/宠物店价 vs 咱的价格]
 [库存紧迫 — 现货发/随时关团/卖完🈚补]
-[备注 — 【】包裹的小字，如适用]
 
 ### 风格二：卖点突出
-（结构同上，但侧重新品亮点/功能优势/独家卖点）
+（侧重新品亮点/功能优势/独家卖点）
 
 ### 风格三：简约速推
-（极简版，控制在3-5行，emoji精炼，只保留：价格+产品名+核心卖点一句话+购买引导，像朋友随手发的一条消息）
+（极简版，3-5行，朋友随手发的感觉）
 
 ## 风格要求
 - 参考知识库「团购标题样本」中的格式、语气、emoji用法
@@ -2402,7 +2418,13 @@ function renderGroupBuyBlocks(text) {
   }
 
   // Split title blocks by ---
-  const blocks = titlesText.split(/\n*---+\n*/).filter(b => b.trim());
+  let blocks = titlesText.split(/\n*---+\n*/).filter(b => b.trim());
+
+  // Fallback: if no --- found, try splitting by "### 风格" headings
+  if (blocks.length <= 1) {
+    const styleBlocks = titlesText.split(/\n*(?=###\s*风格)/).filter(b => b.trim());
+    if (styleBlocks.length > 1) blocks = styleBlocks;
+  }
   let cardsHTML = '';
   if (blocks.length === 0) {
     cardsHTML = '<div class="gb-row"><div class="gb-block">' + escapeHtml(titlesText).replace(/\n/g, '<br>') + '</div></div>';
