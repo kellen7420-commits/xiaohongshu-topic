@@ -1959,9 +1959,9 @@ async function difyFetch(query, onChunk, opts = {}) {
     }
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
-    let full = '', buf = '';
+    let full = '', buf = '', streamDone = false;
     const READ_TIMEOUT = 15000; // 15s without data → stop and use what we have
-    while (true) {
+    while (!streamDone) {
       // Race: reader.read() vs timeout
       let result;
       try {
@@ -1978,14 +1978,13 @@ async function difyFetch(query, onChunk, opts = {}) {
       }
       const { done, value } = result;
       if (done) break;
-      lastDataTime = Date.now();
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop();
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const payload = line.substring(6);
-        if (payload === '[DONE]') { reader.cancel(); break; }
+        if (payload === '[DONE]') { reader.cancel(); streamDone = true; break; }
         try {
           const j = JSON.parse(payload);
           if (j.answer) { full += j.answer; if (onChunk) onChunk(full); }
