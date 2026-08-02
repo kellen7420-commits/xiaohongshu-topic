@@ -1151,6 +1151,22 @@
       margin-bottom: var(--space-2);
     }
 
+    /* GroupBuy block label */
+    .gb-label {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text-primary);
+      margin-bottom: var(--space-3);
+      padding-bottom: var(--space-2);
+      border-bottom: 1px dashed var(--border-subtle);
+    }
+    .gb-label-desc {
+      font-size: 11px;
+      font-weight: 400;
+      color: var(--text-tertiary);
+      margin-left: var(--space-2);
+    }
+
     /* GroupBuy result blocks — horizontal layout */
     .gb-row {
       display: flex;
@@ -2429,10 +2445,31 @@ function renderGroupBuyBlocks(text) {
   if (blocks.length === 0) {
     cardsHTML = '<div class="gb-row"><div class="gb-block">' + escapeHtml(titlesText).replace(/\n/g, '<br>') + '</div></div>';
   } else {
-    cardsHTML = '<div class="gb-row">' + blocks.map((block) => {
-      const cleanBlock = block.trim();
+    const styleLabels = [
+      { emoji: '💥', label: '高性价比', desc: '价格优势拉满' },
+      { emoji: '🎯', label: '产品卖点', desc: '功能亮点突出' },
+      { emoji: '⚡', label: '极简速推', desc: '短小精悍种草' },
+    ];
+    cardsHTML = '<div class="gb-row">' + blocks.map((block, i) => {
+      var cleanBlock = block.trim();
+      // Extract style heading (### 风格X：名称  or  风格X：名称) and remove from body
+      var styleLabel = '';
+      var m = cleanBlock.match(/^(?:#{1,3}\s*)?风格[一二三]\s*[：:]\s*(.+?)(?:\n|$)/);
+      if (m) {
+        styleLabel = m[1];
+        cleanBlock = cleanBlock.substring(m[0].length).trim();
+      }
+      // Fallback labels
+      var labelHTML = '';
+      if (styleLabel || i < styleLabels.length) {
+        var sl = styleLabels[i] || styleLabels[2];
+        var displayLabel = styleLabel || sl.label;
+        labelHTML = '<div class="gb-label">' + sl.emoji + ' ' + escapeHtml(displayLabel) +
+          '<span class="gb-label-desc">' + sl.desc + '</span></div>';
+      }
       return '<div class="gb-block">' +
         '<button class="gb-copy-btn" onclick="event.stopPropagation();copyGroupBuyBlock(this)" title="复制此标题块">📋 复制</button>' +
+        labelHTML +
         '<div class="gb-text" style="padding-right:60px">' + escapeHtml(cleanBlock).replace(/\n/g, '<br>') + '</div>' +
         '</div>';
     }).join('') + '</div>';
