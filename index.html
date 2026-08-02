@@ -1775,7 +1775,9 @@ function updateEmptyStates(module) {
     topicsEmpty.style.display = document.getElementById('cardsContainer').children.length === 0 ? '' : 'none';
   }
   if (module === 'product') {
-    productEmpty.style.display = document.getElementById('prodResultCard').classList.contains('active') ? 'none' : '';
+    var hasResult = document.getElementById('prodResultCard').classList.contains('active') ||
+                    document.getElementById('groupbuyResultCard').classList.contains('active');
+    productEmpty.style.display = hasResult ? 'none' : '';
   }
   if (module === 'feed') {
     feedEmpty.style.display = 'block'; // always show for feed
@@ -2244,7 +2246,7 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 
     setTimeout(() => {
       thinkPanel.classList.remove('active');
-      resultContent.innerHTML = escapeHtml(fullAnswer).replace(/\n/g, '<br>');
+      resultContent.innerHTML = renderProductPost(fullAnswer);
       resultCard.classList.add('active');
       updateEmptyStates('product');
     }, 400);
@@ -2265,6 +2267,34 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
     prodBtn.disabled = false;
     prodBtn.textContent = '✨ 生成小红书笔记';
   }
+}
+
+// Render product post with basic markdown formatting
+function renderProductPost(text) {
+  var html = escapeHtml(text);
+  // Bold
+  html = html.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
+  // Headers
+  html = html.replace(/^### (.+)$/gm, '<h4 style="font-size:15px;font-weight:700;color:var(--text-primary);margin:16px 0 4px">$1</h4>');
+  html = html.replace(/^## (.+)$/gm, '<h3 style="font-size:17px;font-weight:700;color:var(--text-primary);margin:20px 0 6px">$1</h3>');
+  // Lists
+  html = html.replace(/^- (.+)$/gm, '<li style="margin-left:20px">$1</li>');
+  html = html.replace(/((?:<li[^>]*>.*?<\/li>\s*)+)/g, '<ul style="margin:8px 0">$1</ul>');
+  // Numbered lists
+  html = html.replace(/^(\d+)[.、] (.+)$/gm, '<li style="margin-left:20px">$2</li>');
+  // Dividers
+  html = html.replace(/^---+$/gm, '<hr style="border:none;border-top:1px solid var(--border-subtle);margin:16px 0">');
+  // Tables (basic: | col1 | col2 |)
+  html = html.replace(/^\|(.+)\|$/gm, function(m) {
+    var cells = m.split('|').filter(function(c) { return c.trim(); });
+    return '<tr>' + cells.map(function(c) {
+      return '<td style="padding:4px 12px;border:1px solid var(--border-subtle)">' + c.trim() + '</td>';
+    }).join('') + '</tr>';
+  });
+  html = html.replace(/((?:<tr>.*?<\/tr>\s*)+)/g, '<table style="border-collapse:collapse;margin:12px 0;width:100%">$1</table>');
+  // Line breaks
+  html = html.replace(/\n/g, '<br>');
+  return html;
 }
 
 function copyProdResult() {
@@ -2302,7 +2332,6 @@ async function generateGroupBuyTitle() {
   groupbuyBtn.textContent = '生成中...';
   errorBanner.classList.remove('active');
   resultCard.classList.remove('active');
-  if (prodResultCard) prodResultCard.classList.remove('active');
   thinkPanel.classList.add('active');
   thinkContent.innerHTML = '<div class="answer-stream" style="font-size:14px;color:var(--text-secondary);line-height:1.8;max-height:350px;overflow-y:auto;white-space:pre-wrap"></div>';
   const streamEl = thinkContent.querySelector('.answer-stream');
