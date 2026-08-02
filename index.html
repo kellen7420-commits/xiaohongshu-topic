@@ -1946,13 +1946,15 @@ const DIFY_GROUPBUY_API_KEY = 'app-W3oaKJh4isKAQ1VnOWrO7xyW';
 async function difyFetch(query, onChunk, opts = {}) {
   const apiKey = opts.apiKey || DIFY_API_KEY;
   const chatflow = opts.chatflow || '';
+  // Total timeout for the entire operation (including initial connection)
+  const TOTAL_TIMEOUT = opts.timeout || 180000; // 3 min default, configurable per call
   // ── Streaming call ──
-  const doStream = async (url, useAuth) => {
+  const doStream = async (url, useAuth, signal) => {
     const headers = { 'Content-Type': 'application/json' };
     if (useAuth) headers['Authorization'] = 'Bearer ' + apiKey;
     const body = { inputs: {}, query, response_mode: 'streaming', user: 'local-user' };
     if (chatflow) body.chatflow = chatflow;
-    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body), signal });
     if (!res.ok) {
       const t = await res.text();
       throw new Error('API ' + res.status + ': ' + t.substring(0, 200));
@@ -2000,11 +2002,11 @@ async function difyFetch(query, onChunk, opts = {}) {
   };
 
   // ── Blocking fallback ──
-  const doBlock = async (url, useAuth) => {
+  const doBlock = async (url, useAuth, signal) => {
     const headers = { 'Content-Type': 'application/json' };
     if (useAuth) headers['Authorization'] = 'Bearer ' + apiKey;
     const res = await fetch(url, {
-      method: 'POST', headers,
+      method: 'POST', headers, signal,
       body: JSON.stringify({ inputs: {}, query, response_mode: 'blocking', user: 'local-user' }),
     });
     if (!res.ok) {
@@ -2015,12 +2017,11 @@ async function difyFetch(query, onChunk, opts = {}) {
     return (data.answer || '').replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<think>[\s\S]*$/, '').trim();
   };
 
-  // Retry helper
-  const retry = async (fn) => {
-    try { return await fn(); } catch (e) {
-      await new Promise(r => setTimeout(r, 1000));
-      return await fn();
-    }
+  // ── Helper: create abort controller with timeout ──
+  const withTimeout = (timeoutMs) => {
+    const ctrl = new AbortController();
+    const tid = setTimeout(() => ctrl.abort(), timeoutMs);
+    return { signal: ctrl.signal, clear: () => clearTimeout(tid) };
   };
 
   // ── Dispatch ──
@@ -2028,16 +2029,41 @@ async function difyFetch(query, onChunk, opts = {}) {
 
   // Local: stream direct to Dify, fallback to blocking
   if (isLocal) {
-    try { return await doStream(DIFY_API_URL, true); }
-    catch (e) { return await retry(() => doBlock(DIFY_API_URL, true)); }
+    const tc = withTimeout(TOTAL_TIMEOUT);
+    try { return await doStream(DIFY_API_URL, true, tc.signal); }
+    catch (e) {
+      if (e.name === 'AbortError') throw new Error('请求超时：AI 搜索耗时超过 ' + (TOTAL_TIMEOUT/1000) + ' 秒，请简化需求后重试');
+      tc.clear(); const tc2 = withTimeout(TOTAL_TIMEOUT);
+      try { return await doBlock(DIFY_API_URL, true, tc2.signal); }
+      catch (e2) {
+        if (e2.name === 'AbortError') throw new Error('请求超时：AI 搜索耗时超过 ' + (TOTAL_TIMEOUT/1000) + ' 秒，请简化需求后重试');
+        throw e2;
+      } finally { tc2.clear(); }
+    } finally { tc.clear(); }
   }
 
   // Deployed: proxy first, direct as fallback
-  try { return await doStream(PROXY_URL, false); }
+  const tc1 = withTimeout(Math.min(TOTAL_TIMEOUT, 25000)); // Vercel Edge has ~30s limit
+  try { return await doStream(PROXY_URL, false, tc1.signal); }
   catch (e) {
-    try { return await doStream(DIFY_API_URL, true); }
-    catch (e2) { return await retry(() => doBlock(DIFY_API_URL, true)); }
-  }
+    tc1.clear();
+    if (e.name === 'AbortError') {
+      // Proxy timed out (likely Vercel 30s limit) — fall through to direct
+      console.warn('Proxy timeout after 25s, falling back to direct Dify API');
+    }
+    const tc2 = withTimeout(TOTAL_TIMEOUT);
+    try { return await doStream(DIFY_API_URL, true, tc2.signal); }
+    catch (e2) {
+      tc2.clear();
+      if (e2.name === 'AbortError') throw new Error('请求超时：AI 搜索耗时超过 ' + (TOTAL_TIMEOUT/1000) + ' 秒，请简化需求后重试');
+      const tc3 = withTimeout(TOTAL_TIMEOUT);
+      try { return await doBlock(DIFY_API_URL, true, tc3.signal); }
+      catch (e3) {
+        if (e3.name === 'AbortError') throw new Error('请求超时：AI 搜索耗时超过 ' + (TOTAL_TIMEOUT/1000) + ' 秒，请简化需求后重试');
+        throw e3;
+      } finally { tc3.clear(); }
+    } finally { tc2.clear(); }
+  } finally { tc1.clear(); }
 }
 
 // ============================================
@@ -2157,6 +2183,16 @@ async function fetchTopics(promptOverride) {
   const streamEl = thinkContent.querySelector('.answer-stream');
   emptyState.style.display = 'none';
 
+  // Start elapsed timer
+  var thinkStart = Date.now();
+  var thinkTimer = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - thinkStart) / 1000);
+    var timerText = '⏳ AI 正在搜索 & 思考（已等待 ' + elapsed + ' 秒）...';
+    if (!streamEl.textContent || streamEl.textContent.indexOf('⏳') === 0) {
+      streamEl.textContent = timerText;
+    }
+  }, 1000);
+
   try {
     const answer = await difyFetch(query, (partial) => {
       // Live stream: show AI output as it arrives, strip think tags for cleaner display
@@ -2164,6 +2200,7 @@ async function fetchTopics(promptOverride) {
       streamEl.textContent = display || '⏳ AI 正在思考，请耐心等待...';
       streamEl.scrollTop = streamEl.scrollHeight;
     });
+    clearInterval(thinkTimer);
 
     // Show completion indicator
     thinkContent.innerHTML = '<div style="color:var(--success);font-weight:600;margin-bottom:8px">✅ 生成完成！</div>' +
@@ -2211,6 +2248,7 @@ async function fetchTopics(promptOverride) {
     }, 400);
 
   } catch (err) {
+    clearInterval(thinkTimer);
     thinkPanel.classList.remove('active');
     errorBanner.textContent = '❌ ' + (err.message || '网络错误，请稍后重试');
     errorBanner.classList.add('active');
@@ -2445,6 +2483,15 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 - 结尾自然引导："想了解的姐妹扣1"或"主页有方式"
 - 所有价格数据必须是你搜索到的真实数据，不要编造`;
 
+  // Start elapsed timer
+  var prodThinkStart = Date.now();
+  var prodThinkTimer = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - prodThinkStart) / 1000);
+    if (!streamEl.textContent || streamEl.textContent.indexOf('⏳') === 0) {
+      streamEl.textContent = '⏳ AI 正在搜索全网价格 & 撰写种草笔记（已等待 ' + elapsed + ' 秒）...';
+    }
+  }, 1000);
+
   let fullAnswer = '';
 
   try {
@@ -2453,6 +2500,7 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
       streamEl.scrollTop = streamEl.scrollHeight;
     });
 
+    clearInterval(prodThinkTimer);
     setTimeout(() => {
       thinkPanel.classList.remove('active');
       resultContent.innerHTML = renderProductPost(fullAnswer);
@@ -2461,6 +2509,7 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
     }, 400);
 
   } catch (err) {
+    clearInterval(prodThinkTimer);
     thinkPanel.classList.remove('active');
     const msg = err.message || '';
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
@@ -2616,14 +2665,24 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 - 禁止AI味：不说"首先其次""综上所述""值得注意的是"
 - 禁止编造价格！所有价格必须来自搜索结果`;
 
+  // Start elapsed timer
+  var gbThinkStart = Date.now();
+  var gbThinkTimer = setInterval(function() {
+    var elapsed = Math.floor((Date.now() - gbThinkStart) / 1000);
+    if (!streamEl.textContent || streamEl.textContent.indexOf('⏳') === 0 || streamEl.textContent.indexOf('搜索') !== -1) {
+      streamEl.textContent = '⏳ AI 正在搜索电商平台价格 & 分析小红书笔记（已等待 ' + elapsed + ' 秒）...';
+    }
+  }, 1000);
+
   let fullAnswer = '';
 
   try {
     fullAnswer = await difyFetch(prompt, (partial) => {
       streamEl.textContent = partial;
       streamEl.scrollTop = streamEl.scrollHeight;
-    }, { apiKey: DIFY_GROUPBUY_API_KEY || DIFY_API_KEY, chatflow: DIFY_GROUPBUY_API_KEY ? 'groupbuy' : '' });
+    }, { apiKey: DIFY_GROUPBUY_API_KEY || DIFY_API_KEY, chatflow: DIFY_GROUPBUY_API_KEY ? 'groupbuy' : '', timeout: 180000 });
 
+    clearInterval(gbThinkTimer);
     setTimeout(() => {
       thinkPanel.classList.remove('active');
       resultContent.innerHTML = renderGroupBuyBlocks(fullAnswer);
@@ -2632,6 +2691,7 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
     }, 400);
 
   } catch (err) {
+    clearInterval(gbThinkTimer);
     thinkPanel.classList.remove('active');
     const msg = err.message || '';
     if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
