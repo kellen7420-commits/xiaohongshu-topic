@@ -563,7 +563,7 @@
       display: grid;
       grid-template-columns: repeat(3, 1fr);
       gap: var(--space-5);
-      margin-top: var(--space-6);
+      margin-top: 0;
     }
 
     @media (max-width: 1600px) {
@@ -574,19 +574,39 @@
       .cards-grid { grid-template-columns: 1fr; }
     }
 
+    /* Section divider between analysis and cards */
+    .section-divider {
+      display: flex;
+      align-items: center;
+      gap: var(--space-3);
+      margin-bottom: var(--space-5);
+      color: var(--text-tertiary);
+      font-size: 12px;
+      font-weight: 600;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+    }
+    .section-divider::after {
+      content: '';
+      flex: 1;
+      height: 1px;
+      background: var(--border-subtle);
+    }
+
     .topic-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-subtle);
       border-radius: var(--radius-lg);
-      box-shadow: var(--shadow-card);
+      box-shadow: 0 1px 3px rgba(0,0,0,0.04);
       overflow: hidden;
-      transition: box-shadow var(--duration-normal) var(--ease-out), border-color var(--duration-normal) var(--ease-out);
+      transition: box-shadow var(--duration-normal) var(--ease-out), border-color var(--duration-normal) var(--ease-out), transform var(--duration-normal) var(--ease-out);
       position: relative;
     }
 
     .topic-card:hover {
-      border-color: var(--border-default);
-      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.06);
+      border-color: #BFDBFE;
+      box-shadow: 0 4px 16px rgba(37,99,235,0.08);
+      transform: translateY(-2px);
     }
 
     .topic-card .card-top {
@@ -743,16 +763,18 @@
        ============================================ */
     .analysis-panel {
       background: var(--bg-surface);
-      border: 1px solid var(--accent-subtle);
+      border: 1px solid #BFDBFE;
+      border-left: 4px solid var(--accent);
       border-radius: var(--radius-lg);
-      margin-bottom: var(--space-6);
+      margin-bottom: var(--space-8);
       overflow: hidden;
+      box-shadow: 0 1px 4px rgba(37,99,235,0.06);
     }
 
     .analysis-panel .analysis-header {
       padding: var(--space-4) var(--space-6);
-      background: linear-gradient(135deg, #F0F5FF, #FAFBFF);
-      border-bottom: 1px solid var(--border-subtle);
+      background: linear-gradient(135deg, #EFF6FF, #F8FAFC);
+      border-bottom: 1px solid #DBEAFE;
       display: flex;
       align-items: center;
       gap: var(--space-3);
@@ -2146,6 +2168,10 @@ async function fetchTopics(promptOverride) {
         cardsHTML = validCards.map(c => renderTopicCard(c)).join('');
       } else if (analysis && topics.trim()) {
         cardsHTML = renderSingleCard(topics);
+      }
+      // Add section divider when analysis is present
+      if (analysis && cardsHTML) {
+        cardsHTML = '<div class="section-divider">📝 精选笔记</div>' + cardsHTML;
       }
       container.innerHTML = cardsHTML;
       updateEmptyStates('topics');
