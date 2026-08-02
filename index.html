@@ -1115,6 +1115,36 @@
 
     .result-card.active { display: block; animation: fadeIn var(--duration-slow) var(--ease-out); }
 
+    /* GroupBuy result blocks */
+    .gb-block {
+      background: linear-gradient(135deg, #FFF7ED, #FFFBEB);
+      border: 1px solid #FDE68A;
+      border-radius: var(--radius-md);
+      padding: var(--space-5);
+      margin-bottom: var(--space-4);
+      font-size: 14px;
+      line-height: 2;
+      white-space: pre-wrap;
+      word-break: break-word;
+    }
+    .gb-block:last-child { margin-bottom: 0; }
+    .gb-block .gb-copy-btn {
+      float: right;
+      font-size: 12px;
+      padding: 4px 10px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-default);
+      border-radius: var(--radius-sm);
+      cursor: pointer;
+      color: var(--text-secondary);
+      transition: all var(--duration-fast) var(--ease-out);
+    }
+    .gb-block .gb-copy-btn:hover {
+      background: var(--accent);
+      color: var(--text-inverse);
+      border-color: var(--accent);
+    }
+
     /* ============================================
        EMPTY STATE
        ============================================ */
@@ -1456,8 +1486,11 @@
               <button class="btn btn-primary" id="prodBtn" onclick="generateProductPost()">
                 ✨ 生成卖货贴
               </button>
-              <span style="font-size:12px;color:var(--text-tertiary)">AI 将生成完整可发布的小红书笔记</span>
+              <button class="btn btn-secondary" id="groupbuyBtn" onclick="generateGroupBuyTitle()">
+                🎯 生成快团团标题
+              </button>
             </div>
+            <div style="margin-top:var(--space-2);font-size:12px;color:var(--text-tertiary)">卖货贴 → 小红书长文笔记 &nbsp;|&nbsp; 快团团 → 团购链接短标题</div>
           </div>
         </div>
       </div>
@@ -1485,6 +1518,26 @@
         </div>
       </div>
 
+      <!-- GroupBuy Thinking -->
+      <div class="thinking-panel" id="groupbuyThinkingPanel">
+        <div class="think-header">
+          AI 正在搜索 & 生成团购标题
+          <span class="pulse-dots"><span></span><span></span><span></span></span>
+        </div>
+        <div class="think-body" id="groupbuyThinkingContent"></div>
+      </div>
+
+      <!-- GroupBuy Result -->
+      <div class="result-card" id="groupbuyResultCard">
+        <div class="card-header">
+          <h3>🎯 团购标题</h3>
+          <button class="btn btn-secondary btn-sm" onclick="copyGroupBuyResult()">📋 复制全部</button>
+        </div>
+        <div class="card-body">
+          <div id="groupbuyResultContent"></div>
+        </div>
+      </div>
+
       <!-- Empty State -->
       <div class="empty-state" id="productEmpty">
         <div class="empty-icon">🛍️</div>
@@ -1509,6 +1562,7 @@
               <span class="kb-opt" data-kb="kb-4-爆款笔记风格样本">📝 风格样本</span>
               <span class="kb-opt" data-kb="kb-2-产品库">📦 产品库</span>
               <span class="kb-opt" data-kb="kb-1-博主人设">👤 博主人设</span>
+              <span class="kb-opt" data-kb="kb-5-快团团标题样本">🛒 团购标题</span>
             </div>
           </div>
           <div class="form-field" style="margin-bottom:var(--space-4);">
@@ -1668,19 +1722,23 @@ function updateEmptyStates(module) {
 const PROXY_URL = '/api/chat';
 const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
 const DIFY_API_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
+const DIFY_GROUPBUY_API_KEY = ''; // 快团团 Chatflow API Key（创建 Chatflow 后填入）
 
 // difyFetch: streaming mode with blocking fallback
 // onChunk(fullAnswerSoFar) called on each streamed token — use for live display
+// opts.apiKey: override API key (for groupbuy Chatflow)
+// opts.chatflow: 'groupbuy' to tell proxy which key to use
 // Returns the complete answer text
-async function difyFetch(query, onChunk) {
+async function difyFetch(query, onChunk, opts = {}) {
+  const apiKey = opts.apiKey || DIFY_API_KEY;
+  const chatflow = opts.chatflow || '';
   // ── Streaming call ──
   const doStream = async (url, useAuth) => {
     const headers = { 'Content-Type': 'application/json' };
-    if (useAuth) headers['Authorization'] = 'Bearer ' + DIFY_API_KEY;
-    const res = await fetch(url, {
-      method: 'POST', headers,
-      body: JSON.stringify({ inputs: {}, query, response_mode: 'streaming', user: 'local-user' }),
-    });
+    if (useAuth) headers['Authorization'] = 'Bearer ' + apiKey;
+    const body = { inputs: {}, query, response_mode: 'streaming', user: 'local-user' };
+    if (chatflow) body.chatflow = chatflow;
+    const res = await fetch(url, { method: 'POST', headers, body: JSON.stringify(body) });
     if (!res.ok) {
       const t = await res.text();
       throw new Error('API ' + res.status + ': ' + t.substring(0, 200));
@@ -1714,7 +1772,7 @@ async function difyFetch(query, onChunk) {
   // ── Blocking fallback ──
   const doBlock = async (url, useAuth) => {
     const headers = { 'Content-Type': 'application/json' };
-    if (useAuth) headers['Authorization'] = 'Bearer ' + DIFY_API_KEY;
+    if (useAuth) headers['Authorization'] = 'Bearer ' + apiKey;
     const res = await fetch(url, {
       method: 'POST', headers,
       body: JSON.stringify({ inputs: {}, query, response_mode: 'blocking', user: 'local-user' }),
@@ -2140,6 +2198,138 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 function copyProdResult() {
   const content = document.getElementById('prodResultContent').innerText;
   navigator.clipboard.writeText(content).then(() => showToast('已复制到剪贴板'));
+}
+
+// ============================================
+// 快团团标题生成
+// ============================================
+async function generateGroupBuyTitle() {
+  const groupbuyBtn = document.getElementById('groupbuyBtn');
+  const prodBtn = document.getElementById('prodBtn');
+  const name = document.getElementById('prodName').value.trim();
+  const brand = document.getElementById('prodBrand').value.trim();
+  const category = document.getElementById('prodCategory').value.trim();
+  const officialPrice = document.getElementById('prodOfficialPrice').value.trim();
+  const channelPrice = document.getElementById('prodChannelPrice').value.trim();
+  const sellingPoints = document.getElementById('prodSellingPoints').value.trim();
+
+  if (!name) {
+    document.getElementById('prodName').focus();
+    return;
+  }
+
+  const thinkPanel = document.getElementById('groupbuyThinkingPanel');
+  const thinkContent = document.getElementById('groupbuyThinkingContent');
+  const errorBanner = document.getElementById('prodErrorBanner');
+  const resultCard = document.getElementById('groupbuyResultCard');
+  const resultContent = document.getElementById('groupbuyResultContent');
+  const prodResultCard = document.getElementById('prodResultCard');
+
+  groupbuyBtn.disabled = true;
+  prodBtn.disabled = true;
+  groupbuyBtn.textContent = '生成中...';
+  errorBanner.classList.remove('active');
+  resultCard.classList.remove('active');
+  if (prodResultCard) prodResultCard.classList.remove('active');
+  thinkPanel.classList.add('active');
+  thinkContent.innerHTML = '<div class="answer-stream" style="font-size:14px;color:var(--text-secondary);line-height:1.8;max-height:350px;overflow-y:auto;white-space:pre-wrap"></div>';
+  const streamEl = thinkContent.querySelector('.answer-stream');
+
+  const prompt = `你是快团团文案专家。请针对以下产品，先搜索淘宝/天猫/京东/拼多多确认价格和卖点，再搜索小红书种草帖提取关键词，然后结合团购标题样本知识库的风格，生成2个不同风格的快团团团购标题。
+
+## 产品信息
+- 产品名称：${name}
+${brand ? '- 品牌：' + brand : ''}
+${category ? '- 品类：' + category : ''}
+${officialPrice ? '- 官方旗舰店价格参考：' + officialPrice : ''}
+${channelPrice ? '- 我的渠道价格：' + channelPrice : ''}
+${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
+
+## 搜索任务
+1. 搜索淘宝/天猫/京东该产品的当前售价和详情卖点
+2. 搜索拼多多、抖音商城该产品的价格
+3. 搜索小红书该产品的热门种草帖（至少看3-5篇），提取高频关键词和用户痛点
+
+## 输出格式（严格遵循知识库「团购标题样本」的格式）
+生成2个不同风格的标题块，用 --- 分隔：
+
+### 风格一：性价比炸裂
+💥 [价格][品牌][产品名] + 紧迫感词
+[价值主张 — 一句话说清为什么值]
+[卖点bullet — 3-6行，每行emoji + 关键卖点]
+[价格对比 — 🍑/官旗/宠物店价 vs 咱的价格]
+[库存紧迫 — 现货发/随时关团/卖完🈚补]
+[备注 — 【】包裹的小字，如适用]
+
+### 风格二：卖点突出
+（结构同上，但侧重新品亮点/功能优势/独家卖点）
+
+## 风格要求
+- 参考知识库「团购标题样本」中的格式、语气、emoji用法
+- 快节奏短句，大量emoji点缀（💥🚨🆕🔥⚡🉑❗✅👍🍑🛒🎯💗）
+- 口语化，像朋友安利，不像官方文案
+- 价格优势必须用搜索到的真实数据对比
+- 紧迫感真实不虚假
+- 禁止AI味：不说"首先其次""综上所述""值得注意的是"
+- 禁止编造价格！所有价格必须来自搜索结果`;
+
+  let fullAnswer = '';
+
+  try {
+    fullAnswer = await difyFetch(prompt, (partial) => {
+      streamEl.textContent = partial;
+      streamEl.scrollTop = streamEl.scrollHeight;
+    }, { apiKey: DIFY_GROUPBUY_API_KEY || DIFY_API_KEY, chatflow: DIFY_GROUPBUY_API_KEY ? 'groupbuy' : '' });
+
+    setTimeout(() => {
+      thinkPanel.classList.remove('active');
+      resultContent.innerHTML = renderGroupBuyBlocks(fullAnswer);
+      resultCard.classList.add('active');
+      updateEmptyStates('product');
+    }, 400);
+
+  } catch (err) {
+    thinkPanel.classList.remove('active');
+    const msg = err.message || '';
+    if (msg.includes('Failed to fetch') || msg.includes('NetworkError') || msg.includes('network')) {
+      errorBanner.innerHTML = '❌ 网络请求失败<br><small style="color:var(--text-tertiary)">可能是 Dify API 暂时不可用，请稍后重试。</small>';
+    } else if (msg.includes('429') || msg.includes('rate')) {
+      errorBanner.innerHTML = '❌ 请求太频繁<br><small style="color:var(--text-tertiary)">Dify API 限流，请等几秒后再试。</small>';
+    } else {
+      errorBanner.innerHTML = '❌ ' + escapeHtml(msg) + '<br><small style="color:var(--text-tertiary)">请检查 Dify 应用是否在线。</small>';
+    }
+    errorBanner.classList.add('active');
+  } finally {
+    groupbuyBtn.disabled = false;
+    prodBtn.disabled = false;
+    groupbuyBtn.textContent = '🎯 生成快团团标题';
+  }
+}
+
+// Render groupbuy result as styled blocks separated by ---
+function renderGroupBuyBlocks(text) {
+  const blocks = text.split(/\n*---+\n*/).filter(b => b.trim());
+  if (blocks.length === 0) {
+    return '<div class="gb-block">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div>';
+  }
+  return blocks.map((block, i) => {
+    const cleanBlock = block.trim();
+    return '<div class="gb-block">' +
+      '<button class="gb-copy-btn" onclick="event.stopPropagation();copyGroupBuyBlock(this)" title="复制此标题块">📋 复制</button>' +
+      '<div class="gb-text" style="padding-right:60px">' + escapeHtml(cleanBlock).replace(/\n/g, '<br>') + '</div>' +
+      '</div>';
+  }).join('');
+}
+
+function copyGroupBuyResult() {
+  const blocks = document.querySelectorAll('#groupbuyResultContent .gb-text');
+  const text = Array.from(blocks).map(b => b.innerText).join('\n\n---\n\n');
+  navigator.clipboard.writeText(text).then(() => showToast('已复制全部团购标题'));
+}
+
+function copyGroupBuyBlock(btn) {
+  const text = btn.closest('.gb-block').querySelector('.gb-text').innerText;
+  navigator.clipboard.writeText(text).then(() => showToast('已复制此标题块'));
 }
 
 // ============================================
