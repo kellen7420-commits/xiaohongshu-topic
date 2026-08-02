@@ -2249,7 +2249,7 @@ function renderTopicCard(card) {
   }
   if (!displayTitle) displayTitle = raw.replace(/^选题\s*\d+\s*[：:]\s*/, '').substring(0, 60).replace(/\n/g, ' ').trim() || '选题 #' + card.index;
 
-  var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div><button class="card-save-btn" data-title="' + escapeHtml(displayTitle) + '" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到笔记收藏">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)" style="margin-right:4px">📋 复制</button><button class="btn btn-xs cover-btn" onclick="event.stopPropagation();openCoverEditor(\'' + escapeAttr(displayTitle) + '\',\'' + escapeAttr(content.substring(0, 60)) + '\',\'' + escapeAttr(displayTitle) + '\')" title="生成小红书封面图">🎨 封面</button>';
+  var html = '<div class="topic-card"><div class="card-top"><div class="card-num">' + (card.isSingle ? '生成结果' : '选题 #' + card.index) + '</div><h4>' + escapeHtml(displayTitle) + '</h4><div class="meta-row">' + (heat ? '<span class="badge">' + heat + '</span>' : '') + (type ? '<span class="badge accent">' + type + '</span>' : '') + '</div><button class="card-save-btn" data-title="' + escapeHtml(displayTitle) + '" onclick="event.stopPropagation();saveTopicCard(this)" title="收藏到笔记收藏">♡</button></div><div class="card-content"><button class="btn btn-xs btn-secondary copy-btn" onclick="copyCardText(this)" style="margin-right:4px">📋 复制</button><button class="btn btn-xs cover-btn" data-cover-title="' + escapeHtml(displayTitle) + '" data-cover-subtitle="' + escapeHtml(content.substring(0, 60)) + '" data-cover-keywords="' + escapeHtml(displayTitle) + '" onclick="event.stopPropagation();openCoverEditorBtn(this)" title="生成小红书封面图">🎨 封面</button>';
 
   if (title) {
     html += '<div class="section-label">📝 标题备选</div><ul class="title-list">' + title.split('\n').filter(function(t){return t.trim();}).map(function(t){return '<li>' + escapeHtml(t.replace(/^[①②③④⑤\d]+[.、．]\s*/, '').replace(/\*\*/g, '')) + '</li>';}).join('') + '</ul>';
@@ -3092,6 +3092,14 @@ updateEmptyStates('topics');
       canvasH: 1440,
     };
     var coverColorDots = document.querySelectorAll('.cover-color-dot');
+
+    // Bridge: read data attributes from button (avoids quote escaping issues)
+    function openCoverEditorBtn(btn) {
+      var title = btn.getAttribute('data-cover-title') || '';
+      var subtitle = btn.getAttribute('data-cover-subtitle') || '';
+      var keywords = btn.getAttribute('data-cover-keywords') || '';
+      openCoverEditor(title, subtitle, keywords);
+    }
 
     // Open cover editor from a topic card
     function openCoverEditor(title, subtitle, keywords) {
