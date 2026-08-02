@@ -1980,7 +1980,8 @@ async function difyFetch(query, onChunk, opts = {}) {
     if (buf.startsWith('data: ') && buf.length > 6) {
       try { const j = JSON.parse(buf.substring(6)); if (j.answer) full += j.answer; } catch {}
     }
-    return full.replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    // Strip complete + incomplete think blocks (DeepSeek sometimes cuts off mid-think)
+    return full.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<think>[\s\S]*$/, '').trim();
   };
 
   // ── Blocking fallback ──
@@ -1996,7 +1997,7 @@ async function difyFetch(query, onChunk, opts = {}) {
       throw new Error('API ' + res.status + ': ' + t.substring(0, 200));
     }
     const data = await res.json();
-    return (data.answer || '').replace(/<think>[\s\S]*?<\/think>/g, '').trim();
+    return (data.answer || '').replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<think>[\s\S]*$/, '').trim();
   };
 
   // Retry helper
@@ -2123,8 +2124,12 @@ async function fetchTopics(promptOverride) {
   const errorBanner = document.getElementById('errorBanner');
   const emptyState = document.getElementById('topicsEmpty');
 
-  const query = promptOverride || inputEl.value.trim();
+  var query = promptOverride || inputEl.value.trim();
   if (!query) { inputEl.focus(); return; }
+  // Auto-expand short keyword queries (<15 chars) into a full topic prompt
+  if (!promptOverride && query.length < 15) {
+    query = '先分析"' + query + '"这个话题在宠物赛道的内容趋势和爆款套路，然后推荐6个小红书图文选题，每个包含完整正文';
+  }
 
   sendBtn.disabled = true;
   sendBtn.textContent = '思考中...';
