@@ -417,6 +417,20 @@
 
     .btn-primary:hover:not(:disabled) { background: var(--accent-hover); }
 
+    .btn-xhs {
+      background: #FF2442;
+      color: #fff;
+      border: none;
+    }
+    .btn-xhs:hover:not(:disabled) { background: #E01E38; }
+
+    .btn-wx {
+      background: #07C160;
+      color: #fff;
+      border: none;
+    }
+    .btn-wx:hover:not(:disabled) { background: #06AD56; }
+
     .btn-secondary {
       background: var(--bg-surface);
       color: var(--text-secondary);
@@ -1503,14 +1517,14 @@
               <span class="hint">多个卖点用逗号分隔</span>
             </div>
             <div style="display:flex;gap:var(--space-3);align-items:center;">
-              <button class="btn btn-primary" id="prodBtn" onclick="generateProductPost()">
-                ✨ 生成卖货贴
+              <button class="btn btn-xhs" id="prodBtn" onclick="generateProductPost()">
+                ✨ 生成小红书笔记
               </button>
-              <button class="btn btn-primary" id="groupbuyBtn" onclick="generateGroupBuyTitle()">
-                🎯 生成快团团标题
+              <button class="btn btn-wx" id="groupbuyBtn" onclick="generateGroupBuyTitle()">
+                🎯 生成快团标题
               </button>
             </div>
-            <div style="margin-top:var(--space-2);font-size:12px;color:var(--text-tertiary)">卖货贴 → 小红书长文笔记 &nbsp;|&nbsp; 快团团 → 团购链接短标题</div>
+            <div style="margin-top:var(--space-2);font-size:12px;color:var(--text-tertiary)">小红书笔记 → 长文种草 &nbsp;|&nbsp; 快团标题 → 团购短文案</div>
           </div>
         </div>
       </div>
@@ -2211,7 +2225,7 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
     emptyState.style.display = '';
   } finally {
     prodBtn.disabled = false;
-    prodBtn.textContent = '✨ 生成卖货贴';
+    prodBtn.textContent = '✨ 生成小红书笔记';
   }
 }
 
@@ -2325,7 +2339,7 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
   } finally {
     groupbuyBtn.disabled = false;
     prodBtn.disabled = false;
-    groupbuyBtn.textContent = '🎯 生成快团团标题';
+    groupbuyBtn.textContent = '🎯 生成快团标题';
   }
 }
 
