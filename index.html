@@ -2159,8 +2159,8 @@ async function fetchTopics(promptOverride) {
       } else {
         analysisContainer.innerHTML = '';
       }
-      // Filter out blank/sparse cards (raw content < 30 chars)
-      const validCards = cards.filter(c => c.raw.trim().length > 30);
+      // Filter out blank/sparse cards (raw content < 15 chars)
+      const validCards = cards.filter(c => c.raw.trim().length > 15);
       let cardsHTML = '';
       if (validCards.length === 0 && !analysis) {
         cardsHTML = renderSingleCard(answer);
@@ -2200,18 +2200,44 @@ function escapeAttr(s) {
 }
 
 function parseTopics(text) {
+  // Strip bold markers around "选题N" so regex can match
+  var clean = text.replace(/\*\*选题/g, '选题').replace(/选题\*\*/g, '选题');
+
   const cards = [];
-  const titles = text.match(/选题\s*\d+[：:].*?(?=选题\s*\d|$)/gs);
-  if (titles && titles.length > 0) {
+  // Method 1: "选题N：..." up to next "选题N" or end
+  const titles = clean.match(/选题\s*\d+\s*[：:].*?(?=选题\s*\d|$)/gs);
+  if (titles && titles.length >= 3) {
     titles.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
     return cards;
   }
-  const markers = text.match(/###?\s*选题\s*\d+/g);
-  if (markers && markers.length > 0) {
-    const parts = text.split(/###?\s*选题\s*\d+/).filter(s => s.trim());
+
+  // Method 2: "### 选题N" heading style
+  const markers = clean.match(/###?\s*选题\s*\d+/g);
+  if (markers && markers.length >= 3) {
+    const parts = clean.split(/###?\s*选题\s*\d+/).filter(s => s.trim());
     parts.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
     return cards;
   }
+
+  // Method 3: "选题N" anywhere (looser)
+  const loose = clean.match(/(?:^|\n)\s*选题\s*\d+\s*[：:]/gm);
+  if (loose && loose.length >= 3) {
+    const parts = clean.split(/(?:^|\n)\s*选题\s*\d+\s*[：:]/m).filter(s => s.trim());
+    parts.forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
+    return cards;
+  }
+
+  // Method 4: Numbered sections like "1." "2." etc. (only if >=3 found)
+  const numbered = clean.match(/(?:^|\n)\s*(\d+)[.、]\s*\*\*?/gm);
+  if (numbered && numbered.length >= 3) {
+    const parts = clean.split(/(?:^|\n)\s*\d+[.、]\s*/m).filter(s => s.trim());
+    if (parts.length >= 4) { // first part is usually empty/analysis
+      parts.slice(1).forEach((section, i) => cards.push({ index: i + 1, raw: section.trim() }));
+      return cards;
+    }
+  }
+
+  // Give up: return as single card
   cards.push({ index: 1, raw: text, isSingle: true });
   return cards;
 }
