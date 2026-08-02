@@ -2075,28 +2075,19 @@ function pickChip(query) {
 
 // Split AI output: analysis/summary section before first "选题1" marker
 function splitAnalysis(text) {
-  // Method 1: split at "选题1" marker
-  const marker = text.match(/选题\s*1\s*[：:]/);
+  // Find first "选题N" — support colon, newline, heading (###), or bold (**) formats
+  var marker = text.match(/选题\s*1\s*[：:\n]/);
+  if (!marker) marker = text.match(/#{1,3}\s*选题\s*1\b/);
+  if (!marker) marker = text.match(/\*\*选题\s*1\*\*/);
+
   if (marker) {
-    const before = text.substring(0, marker.index).trim();
-    const after = text.substring(marker.index).trim();
-    // Analysis keywords — broad set to cover various analysis styles
-    const analysisKeywords = /(?:趋势|分析|套路|总结|规律|关注点|结构|爆款|热门|规律|搜索|近期|当前|赛道|话题|方向|推荐|宠物|养宠|铲屎|猫|狗)/i;
-    // Condition 1: >30 chars with keywords → analysis
-    // Condition 2: >100 chars of substantial text → probably analysis (fallback)
-    if ((before.length > 30 && analysisKeywords.test(before)) || before.length > 100) {
+    var before = text.substring(0, marker.index).trim();
+    var after = text.substring(marker.index).trim();
+    // >30 chars with analysis-like content → treat as analysis
+    if (before.length > 30) {
       return { analysis: before, topics: after };
     }
   }
-
-  // Method 2: no "选题1" marker — try any "选题N" marker deep into the text
-  const anyMarker = text.match(/选题\s*\d+\s*[：:]/);
-  if (anyMarker && anyMarker.index > 80) {
-    const before = text.substring(0, anyMarker.index).trim();
-    const after = text.substring(anyMarker.index).trim();
-    return { analysis: before, topics: after };
-  }
-
   return { analysis: '', topics: text };
 }
 
