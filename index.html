@@ -2037,6 +2037,7 @@ async function difyFetch(query, onChunk, opts = {}) {
   catch (e) {
     try { return await doStream(DIFY_API_URL, true); }
     catch (e2) { return await retry(() => doBlock(DIFY_API_URL, true)); }
+  }
 }
 
 // ============================================
