@@ -1960,16 +1960,32 @@ async function difyFetch(query, onChunk, opts = {}) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let full = '', buf = '';
+    const READ_TIMEOUT = 15000; // 15s without data → stop and use what we have
     while (true) {
-      const { done, value } = await reader.read();
+      // Race: reader.read() vs timeout
+      let result;
+      try {
+        result = await Promise.race([
+          reader.read(),
+          new Promise((_, reject) => setTimeout(() => reject(new Error('READ_TIMEOUT')), READ_TIMEOUT))
+        ]);
+      } catch (raceErr) {
+        if (raceErr.message === 'READ_TIMEOUT') {
+          console.warn('Stream read timeout after ' + READ_TIMEOUT + 'ms, using partial response (' + full.length + ' chars)');
+          break;
+        }
+        throw raceErr;
+      }
+      const { done, value } = result;
       if (done) break;
+      lastDataTime = Date.now();
       buf += decoder.decode(value, { stream: true });
       const lines = buf.split('\n');
       buf = lines.pop();
       for (const line of lines) {
         if (!line.startsWith('data: ')) continue;
         const payload = line.substring(6);
-        if (payload === '[DONE]') continue;
+        if (payload === '[DONE]') { reader.cancel(); break; }
         try {
           const j = JSON.parse(payload);
           if (j.answer) { full += j.answer; if (onChunk) onChunk(full); }
@@ -2199,19 +2215,13 @@ function escapeHtml(s) {
   return d.innerHTML;
 }
 
-function escapeAttr(s) {
-  return (s || '').replace(/&/g, '&amp;').replace(/"/g, '&quot;').replace(/'/g, '&#39;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\\/g, '\\\\');
-}
-
 function parseTopics(text) {
   // Strip bold markers around "选题N" so regex can match
-  var clean = text.replace(/\*\*(选题\s*\d+)\*\*/g, '$1').replace(/\*\*选题/g, '选题');
+  var clean = text.replace(/\*\*(选题\s*\d+)\*\*/g, '$1');
 
-  const cards = [];
-
-  // Method 1 (primary): "### 选题N" or "## 选题N" heading style — AI's actual format
+  // Primary: "### 选题N" heading style — AI's actual output format
   var headingSplit = clean.split(/(?:^|\n)\s*#{1,3}\s*选题\s*(\d+)\s*[：:\n]/);
-  if (headingSplit.length >= 7) { // intro + num1 + text1 + num2 + text2 + num3 + text3 + ...
+  if (headingSplit.length >= 7) {
     var sections = [];
     for (var i = 1; i < headingSplit.length; i += 2) {
       var num = parseInt(headingSplit[i]);
@@ -2221,28 +2231,16 @@ function parseTopics(text) {
     if (sections.length >= 3) return sections;
   }
 
-  // Method 2: "选题N：" or "选题N:" with colon — up to next "选题M" or end
+  // Fallback: "选题N：" with colon format
   var colonMatch = clean.match(/选题\s*(\d+)\s*[：:][\s\S]*?(?=选题\s*\d|$)/g);
   if (colonMatch && colonMatch.length >= 3) {
-    colonMatch.forEach(function(section) {
-      var m2 = section.match(/选题\s*(\d+)\s*[：:]/);
-      cards.push({ index: m2 ? parseInt(m2[1]) : cards.length + 1, raw: section.trim() });
+    return colonMatch.map(function(section, i) {
+      return { index: i + 1, raw: section.trim() };
     });
-    return cards;
   }
 
-  // Method 3: "---" separated blocks (AI sometimes uses horizontal rules between topics)
-  var dashBlocks = clean.split(/\n---+\n/).filter(function(b) { return b.trim().length > 30; });
-  if (dashBlocks.length >= 3 && dashBlocks.length <= 8) {
-    dashBlocks.forEach(function(block, i) {
-      cards.push({ index: i + 1, raw: block.trim() });
-    });
-    return cards;
-  }
-
-  // Give up: return as single card
-  cards.push({ index: 1, raw: text, isSingle: true });
-  return cards;
+  // Give up: single card
+  return [{ index: 1, raw: text, isSingle: true }];
 }
 
 // Normalize markdown: strip ** around field labels so regex can match
