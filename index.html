@@ -1133,6 +1133,24 @@
 
     .result-card.active { display: block; animation: fadeIn var(--duration-slow) var(--ease-out); }
 
+    /* GroupBuy search summary */
+    .search-summary {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-subtle);
+      border-radius: var(--radius-md);
+      padding: var(--space-4) var(--space-5);
+      margin-bottom: var(--space-4);
+      font-size: 13px;
+      line-height: 1.8;
+      color: var(--text-secondary);
+    }
+    .search-summary-label {
+      font-weight: 600;
+      font-size: 14px;
+      color: var(--text-primary);
+      margin-bottom: var(--space-2);
+    }
+
     /* GroupBuy result blocks — horizontal layout */
     .gb-row {
       display: flex;
@@ -2288,8 +2306,14 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 2. 搜索拼多多、抖音商城该产品的价格
 3. 搜索小红书该产品的热门种草帖（至少看3-5篇），提取高频关键词和用户痛点
 
-## 输出格式（严格遵循知识库「团购标题样本」的格式）
-生成2个不同风格的标题块，用 --- 分隔：
+## 输出格式（严格遵循）
+**禁止输出任何问候语、开场白、或"好的/稍等/交给"等废话。直接按以下格式输出：**
+
+先输出一段搜索调研总结（各平台价格对比+小红书关键词提取，200字以内），然后换行写 ===，再输出3个标题块（用 --- 分隔）：
+
+[搜索调研总结：各平台价格 + 小红书高频关键词]
+
+===
 
 ### 风格一：性价比炸裂
 💥 [价格][品牌][产品名] + 紧迫感词
@@ -2347,21 +2371,44 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
   }
 }
 
-// Render groupbuy result as styled blocks separated by ---
-// Blocks are laid out horizontally (left-center-right) in a .gb-row flex container
+// Render groupbuy result: search summary above, 3 title blocks below in horizontal row
+// AI output format: [search summary]\n===\n[style1]\n---\n[style2]\n---\n[style3]
 function renderGroupBuyBlocks(text) {
-  const blocks = text.split(/\n*---+\n*/).filter(b => b.trim());
-  if (blocks.length === 0) {
-    return '<div class="gb-row"><div class="gb-block">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div></div>';
+  // Strip common AI greetings / fluff
+  text = text.replace(/^(好的|OK|收到|明白|交给|这就|马上|没问题|稍等|以下)[^]*?\n/, '');
+  text = text.replace(/^#{1,3}\s*搜索调研[：:].*?\n/, '搜索调研：');
+
+  // Split into search summary and title blocks
+  const parts = text.split(/\n*===+\n*/);
+  let searchHTML = '';
+  let titlesText = text;
+
+  if (parts.length >= 2) {
+    // First part is search summary
+    const searchText = parts[0].trim();
+    if (searchText) {
+      searchHTML = '<div class="search-summary"><div class="search-summary-label">🔍 产品调研结果</div>' +
+        escapeHtml(searchText).replace(/\n/g, '<br>') + '</div>';
+    }
+    titlesText = parts.slice(1).join('===');
   }
-  const cards = blocks.map((block, i) => {
-    const cleanBlock = block.trim();
-    return '<div class="gb-block">' +
-      '<button class="gb-copy-btn" onclick="event.stopPropagation();copyGroupBuyBlock(this)" title="复制此标题块">📋 复制</button>' +
-      '<div class="gb-text" style="padding-right:60px">' + escapeHtml(cleanBlock).replace(/\n/g, '<br>') + '</div>' +
-      '</div>';
-  }).join('');
-  return '<div class="gb-row">' + cards + '</div>';
+
+  // Split title blocks by ---
+  const blocks = titlesText.split(/\n*---+\n*/).filter(b => b.trim());
+  let cardsHTML = '';
+  if (blocks.length === 0) {
+    cardsHTML = '<div class="gb-row"><div class="gb-block">' + escapeHtml(titlesText).replace(/\n/g, '<br>') + '</div></div>';
+  } else {
+    cardsHTML = '<div class="gb-row">' + blocks.map((block) => {
+      const cleanBlock = block.trim();
+      return '<div class="gb-block">' +
+        '<button class="gb-copy-btn" onclick="event.stopPropagation();copyGroupBuyBlock(this)" title="复制此标题块">📋 复制</button>' +
+        '<div class="gb-text" style="padding-right:60px">' + escapeHtml(cleanBlock).replace(/\n/g, '<br>') + '</div>' +
+        '</div>';
+    }).join('') + '</div>';
+  }
+
+  return searchHTML + cardsHTML;
 }
 
 function copyGroupBuyResult() {
