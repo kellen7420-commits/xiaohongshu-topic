@@ -1935,7 +1935,7 @@ function updateEmptyStates(module) {
 // ============================================
 const PROXY_URL = '/api/chat';
 const DIFY_API_URL = 'https://api.dify.ai/v1/chat-messages';
-const DIFY_API_KEY = 'app-Wzapd1wTx687TJRQMhARvAMJ';
+const DIFY_API_KEY = 'app-Wd89voV6lHbW4XhmNYjQEwRe';
 const DIFY_GROUPBUY_API_KEY = 'app-W3oaKJh4isKAQ1VnOWrO7xyW';
 
 // difyFetch: streaming mode with blocking fallback
@@ -1960,7 +1960,7 @@ async function difyFetch(query, onChunk, opts = {}) {
     const reader = res.body.getReader();
     const decoder = new TextDecoder();
     let full = '', buf = '', streamDone = false;
-    const READ_TIMEOUT = 15000; // 15s without data → stop and use what we have
+    const READ_TIMEOUT = 60000; // 60s — DeepSeek reasoning phase can be silent for a while
     while (!streamDone) {
       // Race: reader.read() vs timeout
       let result;
@@ -2075,9 +2075,19 @@ function pickChip(query) {
 
 // Split AI output: analysis/summary section before first "选题1" marker
 function splitAnalysis(text) {
-  // Find first "选题N" — support colon, newline, heading (###), or bold (**) formats
-  var marker = text.match(/选题\s*1\s*[：:\n]/);
-  if (!marker) marker = text.match(/#{1,3}\s*选题\s*1\b/);
+  // Strip leading AI acknowledgment — only if first line is SHORT (≤80 chars)
+  // and matches known echo patterns like "好的，先分析..." or "明白了，..."
+  var firstLineEnd = text.indexOf('\n');
+  if (firstLineEnd > 4 && firstLineEnd <= 80) {
+    var firstLine = text.substring(0, firstLineEnd);
+    if (/^(好的|明白了|收到|OK|没问题|了解|让我来|这就|马上|知道了)[，,。.\s!！]/i.test(firstLine)) {
+      text = text.substring(firstLineEnd + 1).trim();
+    }
+  }
+
+  // Find first "选题1" — try heading (###) first so prefix isn't stripped
+  var marker = text.match(/#{1,3}\s*选题\s*1\s*[：:\n]/);
+  if (!marker) marker = text.match(/选题\s*1\s*[：:\n]/);
   if (!marker) marker = text.match(/\*\*选题\s*1\*\*/);
 
   if (marker) {
@@ -2149,8 +2159,9 @@ async function fetchTopics(promptOverride) {
 
   try {
     const answer = await difyFetch(query, (partial) => {
-      // Live stream: show AI output as it arrives
-      streamEl.textContent = partial;
+      // Live stream: show AI output as it arrives, strip think tags for cleaner display
+      var display = partial.replace(/<think>[\s\S]*?<\/think>/g, '').replace(/<think>[\s\S]*$/, '').trim();
+      streamEl.textContent = display || '⏳ AI 正在思考，请耐心等待...';
       streamEl.scrollTop = streamEl.scrollHeight;
     });
 
@@ -2160,7 +2171,16 @@ async function fetchTopics(promptOverride) {
       escapeHtml(answer.substring(0, 500)) + (answer.length > 500 ? '...' : '') + '</div>';
 
     const { analysis, topics } = splitAnalysis(answer);
+    console.log('=== DEBUG ===');
+    console.log('Raw answer length:', answer.length);
+    console.log('Answer first 200:', answer.substring(0, 200));
+    console.log('analysis length:', analysis.length, '| topics length:', topics.length);
+    console.log('Topics first 500:', topics.substring(0, 500));
     const cards = parseTopics(topics);
+    console.log('Cards found:', cards.length);
+    cards.forEach(function(c, i) {
+      console.log('  Card' + (i+1) + ' idx=' + c.index + ' len=' + c.raw.length + ' start=' + c.raw.substring(0, 60));
+    });
 
     setTimeout(() => {
       thinkPanel.classList.remove('active');
@@ -2180,13 +2200,14 @@ async function fetchTopics(promptOverride) {
       } else if (analysis && topics.trim()) {
         cardsHTML = renderSingleCard(topics);
       }
-      // Add section divider when analysis is present
+      // Add section divider after analysis panel, OUTSIDE the cards grid
       if (analysis && cardsHTML) {
-        cardsHTML = '<div class="section-divider">📝 精选笔记</div>' + cardsHTML;
+        analysisContainer.insertAdjacentHTML('beforeend',
+          '<div class="section-divider">📝 精选笔记</div>');
       }
       container.innerHTML = cardsHTML;
       updateEmptyStates('topics');
-      saveHistory(query, analysisContainer.innerHTML + container.innerHTML);
+      saveHistory(query, analysisContainer.innerHTML, container.innerHTML);
     }, 400);
 
   } catch (err) {
@@ -2210,7 +2231,7 @@ function parseTopics(text) {
   // Strip bold markers around "选题N" so regex can match
   var clean = text.replace(/\*\*(选题\s*\d+)\*\*/g, '$1');
 
-  // Primary: "### 选题N" heading style — AI's actual output format
+  // Pattern 1: "### 选题N" heading style
   var headingSplit = clean.split(/(?:^|\n)\s*#{1,3}\s*选题\s*(\d+)\s*[：:\n]/);
   if (headingSplit.length >= 7) {
     var sections = [];
@@ -2222,7 +2243,7 @@ function parseTopics(text) {
     if (sections.length >= 3) return sections;
   }
 
-  // Fallback: "选题N：" with colon format
+  // Pattern 2: "选题N：" or "选题N:" colon format
   var colonMatch = clean.match(/选题\s*(\d+)\s*[：:][\s\S]*?(?=选题\s*\d|$)/g);
   if (colonMatch && colonMatch.length >= 3) {
     return colonMatch.map(function(section, i) {
@@ -2230,7 +2251,29 @@ function parseTopics(text) {
     });
   }
 
+  // Pattern 3: "\n选题N" — bare number at line start (no heading, no colon)
+  var bareSplit = clean.split(/(?:^|\n)\s*选题\s*(\d+)\s*\n/);
+  if (bareSplit.length >= 7) {
+    var bareSections = [];
+    for (var j = 1; j < bareSplit.length; j += 2) {
+      var bnum = parseInt(bareSplit[j]);
+      var btxt = (bareSplit[j + 1] || '').trim();
+      if (btxt.length > 10) bareSections.push({ index: bnum, raw: btxt });
+    }
+    if (bareSections.length >= 3) return bareSections;
+  }
+
+  // Pattern 4: "**选题N**" bold format (strip then retry colon/bare patterns)
+  var debold = text.replace(/\*\*(选题\s*\d+)\*\*/g, '$1');
+  var colon2 = debold.match(/选题\s*(\d+)\s*[：:][\s\S]*?(?=选题\s*\d|$)/g);
+  if (colon2 && colon2.length >= 3) {
+    return colon2.map(function(section, i) {
+      return { index: i + 1, raw: section.trim() };
+    });
+  }
+
   // Give up: single card
+  console.warn('parseTopics: all patterns failed, returning single card. First 200 chars:', text.substring(0, 200));
   return [{ index: 1, raw: text, isSingle: true }];
 }
 
@@ -2816,7 +2859,7 @@ async function refreshChips() {
 const HISTORY_KEY = 'topic_history';
 const MAX_HISTORY = 50;
 
-function saveHistory(query, cardsHTML) {
+function saveHistory(query, analysisHTML, cardsHTML) {
   const history = JSON.parse(localStorage.getItem(HISTORY_KEY) || '[]');
   // Extract preview from first card title
   let preview = '';
@@ -2827,6 +2870,7 @@ function saveHistory(query, cardsHTML) {
     id: Date.now().toString(),
     time: new Date().toLocaleString('zh-CN', { month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit' }),
     query: query.substring(0, 80),
+    analysisHTML: analysisHTML,
     cardsHTML: cardsHTML,
     preview: preview || '查看详情'
   });
@@ -2893,7 +2937,8 @@ function restoreHistory(id) {
   document.getElementById('moduleTitle').textContent = '选题生成';
   document.getElementById('moduleDesc').textContent = '为你的宠物账号生成热门选题';
 
-  // Restore cards
+  // Restore analysis and cards separately
+  document.getElementById('analysisContainer').innerHTML = entry.analysisHTML || '';
   document.getElementById('cardsContainer').innerHTML = entry.cardsHTML;
   document.getElementById('topicInput').value = entry.query;
   document.getElementById('topicsEmpty').style.display = 'none';
