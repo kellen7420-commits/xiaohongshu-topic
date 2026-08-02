@@ -1115,19 +1115,39 @@
 
     .result-card.active { display: block; animation: fadeIn var(--duration-slow) var(--ease-out); }
 
-    /* GroupBuy result blocks */
+    /* GroupBuy result blocks — horizontal layout */
+    .gb-row {
+      display: flex;
+      gap: var(--space-4);
+      margin-top: var(--space-4);
+    }
     .gb-block {
-      background: linear-gradient(135deg, #FFF7ED, #FFFBEB);
-      border: 1px solid #FDE68A;
+      flex: 1;
+      min-width: 0;
+      background: linear-gradient(135deg, #FFF7ED 0%, #FFEDD5 50%, #FEF3C7 100%);
+      border: 1px solid #FCD34D;
+      border-left: 4px solid #F59E0B;
       border-radius: var(--radius-md);
       padding: var(--space-5);
-      margin-bottom: var(--space-4);
       font-size: 14px;
       line-height: 2;
       white-space: pre-wrap;
       word-break: break-word;
+      position: relative;
     }
-    .gb-block:last-child { margin-bottom: 0; }
+    .gb-block:nth-child(2) {
+      background: linear-gradient(135deg, #F0F9FF 0%, #E0F2FE 50%, #BAE6FD 100%);
+      border-color: #7DD3FC;
+      border-left-color: #0EA5E9;
+    }
+    .gb-block:nth-child(3) {
+      background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 50%, #BBF7D0 100%);
+      border-color: #86EFAC;
+      border-left-color: #22C55E;
+    }
+    @media (max-width: 900px) {
+      .gb-row { flex-direction: column; }
+    }
     .gb-block .gb-copy-btn {
       float: right;
       font-size: 12px;
@@ -2264,6 +2284,9 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 ### 风格二：卖点突出
 （结构同上，但侧重新品亮点/功能优势/独家卖点）
 
+### 风格三：简约速推
+（极简版，控制在3-5行，emoji精炼，只保留：价格+产品名+核心卖点一句话+购买引导，像朋友随手发的一条消息）
+
 ## 风格要求
 - 参考知识库「团购标题样本」中的格式、语气、emoji用法
 - 快节奏短句，大量emoji点缀（💥🚨🆕🔥⚡🉑❗✅👍🍑🛒🎯💗）
@@ -2307,18 +2330,20 @@ ${sellingPoints ? '- 核心卖点：' + sellingPoints : ''}
 }
 
 // Render groupbuy result as styled blocks separated by ---
+// Blocks are laid out horizontally (left-center-right) in a .gb-row flex container
 function renderGroupBuyBlocks(text) {
   const blocks = text.split(/\n*---+\n*/).filter(b => b.trim());
   if (blocks.length === 0) {
-    return '<div class="gb-block">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div>';
+    return '<div class="gb-row"><div class="gb-block">' + escapeHtml(text).replace(/\n/g, '<br>') + '</div></div>';
   }
-  return blocks.map((block, i) => {
+  const cards = blocks.map((block, i) => {
     const cleanBlock = block.trim();
     return '<div class="gb-block">' +
       '<button class="gb-copy-btn" onclick="event.stopPropagation();copyGroupBuyBlock(this)" title="复制此标题块">📋 复制</button>' +
       '<div class="gb-text" style="padding-right:60px">' + escapeHtml(cleanBlock).replace(/\n/g, '<br>') + '</div>' +
       '</div>';
   }).join('');
+  return '<div class="gb-row">' + cards + '</div>';
 }
 
 function copyGroupBuyResult() {
