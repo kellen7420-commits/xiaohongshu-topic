@@ -2017,12 +2017,11 @@ async function difyFetch(query, onChunk, opts = {}) {
     catch (e) { return await retry(() => doBlock(DIFY_API_URL, true)); }
   }
 
-  // Deployed: direct Dify first (no Vercel 10s timeout), proxy as fallback
-  try { return await doStream(DIFY_API_URL, true); }
+  // Deployed: proxy first, direct as fallback
+  try { return await doStream(PROXY_URL, false); }
   catch (e) {
-    try { return await doStream(PROXY_URL, false); }
+    try { return await doStream(DIFY_API_URL, true); }
     catch (e2) { return await retry(() => doBlock(DIFY_API_URL, true)); }
-  }
 }
 
 // ============================================

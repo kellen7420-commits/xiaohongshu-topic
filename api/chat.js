@@ -1,33 +1,48 @@
-// Vercel serverless proxy: browser ← Vercel ← Dify API (streaming mode)
-// Streams chunks as they arrive from Dify so the browser sees live progress.
+// Vercel Edge Function proxy: browser ← Vercel ← Dify API (streaming mode)
+// Edge runtime has 30s timeout (vs 10s for serverless on Hobby plan)
 // Supports two Chatflows: default (topic) and groupbuy (快团团)
-export default async function handler(req, res) {
-  if (req.method === 'OPTIONS') {
-    res.setHeader('Access-Control-Allow-Origin', '*');
-    res.setHeader('Access-Control-Allow-Methods', 'POST, OPTIONS');
-    res.setHeader('Access-Control-Allow-Headers', 'Content-Type');
-    return res.status(200).end();
+export const runtime = 'edge';
+
+export default async function handler(request) {
+  // CORS preflight
+  if (request.method === 'OPTIONS') {
+    return new Response(null, {
+      status: 200,
+      headers: {
+        'Access-Control-Allow-Origin': '*',
+        'Access-Control-Allow-Methods': 'POST, OPTIONS',
+        'Access-Control-Allow-Headers': 'Content-Type',
+      },
+    });
   }
 
-  if (req.method !== 'POST') {
-    return res.status(405).json({ error: 'Method not allowed' });
+  if (request.method !== 'POST') {
+    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
+      status: 405,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
   }
 
-  res.setHeader('Access-Control-Allow-Origin', '*');
-  res.setHeader('Content-Type', 'text/event-stream');
-  res.setHeader('Cache-Control', 'no-cache');
-  res.setHeader('Connection', 'keep-alive');
-  res.setHeader('X-Accel-Buffering', 'no');  // disable nginx buffering
+  try {
+    const body = await request.json();
+  } catch {
+    return new Response(JSON.stringify({ error: 'Invalid JSON body' }), {
+      status: 400,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
+  }
 
   // Pick API key based on chatflow type
-  const isGroupBuy = req.body.chatflow === 'groupbuy';
+  const isGroupBuy = body.chatflow === 'groupbuy';
   const apiKey = isGroupBuy
     ? (process.env.DIFY_GROUPBUY_API_KEY || process.env.DIFY_API_KEY)
     : process.env.DIFY_API_KEY;
 
   if (!apiKey) {
-    res.setHeader('Content-Type', 'application/json');
-    return res.status(500).json({ error: 'DIFY_API_KEY not configured on server' });
+    return new Response(JSON.stringify({ error: 'DIFY_API_KEY not configured on server' }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
   }
 
   try {
@@ -39,7 +54,7 @@ export default async function handler(req, res) {
       },
       body: JSON.stringify({
         inputs: {},
-        query: req.body.query,
+        query: body.query,
         response_mode: 'streaming',
         user: 'proxy-user',
       }),
@@ -47,25 +62,28 @@ export default async function handler(req, res) {
 
     if (!difyRes.ok) {
       const errText = await difyRes.text();
-      res.setHeader('Content-Type', 'application/json');
-      return res.status(difyRes.status).json({ error: `Dify API ${difyRes.status}: ${errText.substring(0, 200)}` });
+      return new Response(JSON.stringify({ error: `Dify API ${difyRes.status}: ${errText.substring(0, 200)}` }), {
+        status: difyRes.status,
+        headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+      });
     }
 
-    // Pipe the SSE stream through
-    const reader = difyRes.body.getReader();
-    const decoder = new TextDecoder();
-
-    while (true) {
-      const { done, value } = await reader.read();
-      if (done) break;
-      const chunk = decoder.decode(value, { stream: true });
-      res.write(chunk);
-    }
-
-    res.end();
+    // Pipe the SSE stream through as a streaming Response
+    return new Response(difyRes.body, {
+      status: 200,
+      headers: {
+        'Content-Type': 'text/event-stream',
+        'Cache-Control': 'no-cache',
+        'Connection': 'keep-alive',
+        'X-Accel-Buffering': 'no',
+        'Access-Control-Allow-Origin': '*',
+      },
+    });
 
   } catch (err) {
-    res.setHeader('Content-Type', 'application/json');
-    return res.status(500).json({ error: err.message });
+    return new Response(JSON.stringify({ error: err.message }), {
+      status: 500,
+      headers: { 'Content-Type': 'application/json', 'Access-Control-Allow-Origin': '*' },
+    });
   }
 }
